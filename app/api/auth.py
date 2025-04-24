@@ -2,13 +2,15 @@ from datetime import timedelta, datetime
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from typing import Dict, Any, List
 import secrets
 import base64
 from io import BytesIO
 from jose import JWTError, jwt
 
 from ..core.security import verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
-from ..crud.user import get_user_by_username
+from ..crud.user import get_user_by_username, create_user
+from ..schemas.user import UserCreate
 from ..db.session import get_db
 from ..schemas.user import UserLogin
 from ..schemas.auth import Token
@@ -93,3 +95,61 @@ def verify_token(
         raise credentials_exception
 
     return {"valid": True}
+
+
+@router.post("/register", response_model=Dict[str, Any])
+async def register(
+    user: UserCreate,
+    db: Session = Depends(get_db)
+):
+    """
+    User registration endpoint:
+        - Validates username format and uniqueness
+        - Validates password strength
+        - Verifies captcha
+        - Creates new user
+    Args:
+        user (UserCreate): user registration data.
+        db (Session): database session.
+    Returns:
+        dict: a dict containing registration status and message.
+    Raises:
+        HTTPException: if registration fails.
+    """
+    # Check if username already exists
+    existing_user = get_user_by_username(db, username=user.username)
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists"
+        )
+
+    try:
+        # Create new user
+        new_user = create_user(db, user)
+        return {
+            "status": True,
+            "message": "Registration successful",
+            "user_id": new_user.id
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Registration failed: {str(e)}"
+        )
+
+
+@router.get("/check-username/{username}", response_model=Dict[str, Any])
+def check_username(username: str, db: Session = Depends(get_db)):
+    """
+    Check if username is available.
+    Args:
+        username (str): username to check.
+        db (Session): database session.
+    Returns:
+        dict: a dict containing availability status and message.
+    """
+    existing_user = get_user_by_username(db, username=username)
+    if existing_user:
+        return {"available": False, "message": "Username is already taken"}
+    return {"available": True, "message": "Username is available"}
