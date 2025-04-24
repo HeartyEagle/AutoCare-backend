@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  mysqldb:
+    image: mysql:5.7
+    platform: linux/amd64
+    container_name: autocare_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: M@cr0h@rd!2025$
+      MYSQL_DATABASE: autocare_db
+      MYSQL_USER: macrohard
+      MYSQL_PASSWORD: M@cr0h@rd!2025$
+      TZ: "Asia/Shanghai"
+    volumes:
+      - ./docker/db/data:/var/lib/mysql
+      - ./docker/db/my.cnf:/etc/mysql/conf.d/my.cnf
+      - ./docker/db/sql:/docker-entrypoint-initdb.d
+    ports:
+      - 3308:3306
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
