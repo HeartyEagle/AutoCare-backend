@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, EmailStr
 import re
 from typing_extensions import Annotated
+from ..models.user import StaffJobType
 
 
 # Base User Schema with common properties
@@ -19,43 +20,16 @@ class UserCreate(UserBase):
     email: Annotated[EmailStr, Field(min_length=5, max_length=50)]
     phone: Annotated[str, Field(min_length=10, max_length=15)]
 
-    @field_validator('username')
-    @classmethod
-    def username_valid(cls, v: str) -> str:
-        '''Username validation: only letters, numbers, underscores and 4~20 chars'''
-        # Username validation: only letters, numbers, underscore.
-        if not re.match(r'^[a-zA-Z0-9_]+$', v):
-            raise ValueError(
-                'Username can only contain letters, numbers, and underscores')
 
-        # Length check: 4-20 characters
-        if len(v) < 4 or len(v) > 20:
-            raise ValueError('Username must be between 4 and 20 characters')
-
-        return v
-
-    @field_validator('password')
-    @classmethod
-    def password_valid(cls, v: str) -> str:
-        '''Password validation: at least 6 chars, one letter and one number.'''
-        # Password must be at least 6 characters
-        if len(v) < 6:
-            raise ValueError('Password must be at least 6 characters')
-
-        # Must contain at least one letter
-        if not any(c.isalpha() for c in v):
-            raise ValueError('Password must contain at least one letter')
-
-        # Must contain at least one number
-        if not any(c.isdigit() for c in v):
-            raise ValueError('Password must contain at least one number')
-
-        return v
+class StaffCreate(UserCreate):
+    jobtype: StaffJobType
+    hourly_rate: Annotated[int, Field(gt=0)]
 
 
 # Schema for login requests
 class UserLogin(BaseModel):
     username: str
+    role: str
     password: str
 
 

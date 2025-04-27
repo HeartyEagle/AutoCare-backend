@@ -3,17 +3,16 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
-import secrets
-import base64
+from sqlalchemy.ext.asyncio import AsyncSession
 from io import BytesIO
 from jose import JWTError, jwt
 
 from ..core.security import verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
-from ..crud.user import get_user_by_username, create_user
+from ..crud.user import get_user_by_username, create_customer
 from ..schemas.user import UserCreate
 from ..db.session import get_db
 from ..schemas.user import UserLogin
-from ..schemas.auth import Token
+from ..schemas.auth import Token, RegisterResponse
 from ..models.user import User
 
 # the auth api router
@@ -21,48 +20,57 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
 @router.post("/login", response_model=Token)
-def login(
+async def login(
     login_data: UserLogin,
-    db: Session = Depends(get_db)
-):
+    db: AsyncSession = Depends(get_db)
+) -> Dict:
     """
-    Login endpoint.
+    Login endpoint to authenticate a user and return an access token.
+    Checks if the username exists, password is correct, and role matches.
     Args:
-        login_data (UserLogin): user login data.
-        db (Session): database session.
-    Returns: 
-        dict: a dict containing access_token info.
-    Raises:
-        HTTPException: if login fails.
+        login_data (UserLogin): User login data containing username, role, and password.
+        db (AsyncSession): Database session for querying user data.
+    Returns:
+        dict: A dictionary indicating success with access token or failure with an error message.
     """
-    user = get_user_by_username(db, login_data.username)
+    # Check if user exists
+    user = await get_user_by_username(db, login_data.username)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
-        )
+        return {
+            "status": "failure",
+            "message": "Incorrect username or password"
+        }
+
+    # Check if the user's role matches the provided role
+    if user.discriminator != login_data.role:
+        return {
+            "status": "failure",
+            "message": "Role does not match. Please check your role selection."
+        }
+
+    # Verify password
     if not verify_password(login_data.password, user.password):
-        db.commit()
+        return {
+            "status": "failure",
+            "message": "Incorrect username or password"
+        }
 
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password"
-        )
-
-    db.commit()
-
+    # Generate access token on successful authentication
     access_token = create_access_token(
-        data={"sub": str(user.user_id)},
+        data={"sub": str(user.user_id), "role": user.discriminator},
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "status": "success",
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 
 @router.post("/verify-token")
-def verify_token(
+async def verify_token(
     token_req: Token,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     Verify the token submitted in the request body.
@@ -90,17 +98,17 @@ def verify_token(
     except JWTError:
         raise credentials_exception
 
-    user = get_user_by_username(db, username)
+    user = await get_user_by_username(db, username)
     if user is None:
         raise credentials_exception
 
     return {"valid": True}
 
 
-@router.post("/register", response_model=Dict[str, Any])
+@router.post("/register", response_model=RegisterResponse)
 async def register(
     user: UserCreate,
-    db: Session = Depends(get_db)
+    db: AsyncSession = Depends(get_db)
 ):
     """
     User registration endpoint:
@@ -117,30 +125,30 @@ async def register(
         HTTPException: if registration fails.
     """
     # Check if username already exists
-    existing_user = get_user_by_username(db, username=user.username)
+    existing_user = await get_user_by_username(db, username=user.username)
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists"
-        )
+        return {
+            "status": "failure",
+            "message": "Username already exists"
+        }
 
     try:
         # Create new user
-        new_user = create_user(db, user)
+        new_user = await create_customer(db, user)
         return {
-            "status": True,
+            "status": "success",
             "message": "Registration successful",
-            "user_id": new_user.id
+            "user_id": new_user.user_id
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Registration failed: {str(e)}"
-        )
+        return {
+            "status": "failure",
+            "message": f"Registration failed: {str(e)}"
+        }
 
 
 @router.get("/check-username/{username}", response_model=Dict[str, Any])
-def check_username(username: str, db: Session = Depends(get_db)):
+async def check_username(username: str, db: AsyncSession = Depends(get_db)):
     """
     Check if username is available.
     Args:
@@ -151,5 +159,5 @@ def check_username(username: str, db: Session = Depends(get_db)):
     """
     existing_user = get_user_by_username(db, username=username)
     if existing_user:
-        return {"available": False, "message": "Username is already taken"}
-    return {"available": True, "message": "Username is available"}
+        return {"status": "failure", "message": "Username is already taken"}
+    return {"status": "success", "message": "Username is available"}

@@ -6,5 +6,5 @@ from .session import engine
 
 async def init_db():
     '''Initialize the database'''
-    with engine.begin() as conn:
-        conn.run_sync(Base.metadata.create_all)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

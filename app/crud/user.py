@@ -1,42 +1,49 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import select, update, delete
-
-from ..models.user import User
-from ..schemas.user import UserCreate
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from ..models.user import User, Admin, Staff, Customer
+from ..schemas.user import UserCreate, StaffCreate
 from ..core.security import get_password_hash
 
 
-def get_user_by_username(db: Session, username: str) -> User:
+async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
     """
-    Get a user by username.
+    Get a user by username asynchronously.
     Args:
-        db (Session): database session.
-        username (str): username of the user.
+        db (AsyncSession): Asynchronous database session.
+        username (str): Username of the user.
     Returns:
-        User: user object.
+        User | None: User object if found, otherwise None.
     """
     stmt = select(User).where(User.username == username)
-    return db.execute(stmt).scalars().first()
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 
-def get_user_by_id(db: Session, user_id: int) -> User:
+async def get_user_by_id(db: AsyncSession, user_id: int) -> User | None:
     """
-    Get a user by id.
+    Get a user by ID asynchronously.
     Args:
-        db (Session): database session.
-        user_id (int): id of the user.
+        db (AsyncSession): Asynchronous database session.
+        user_id (int): ID of the user.
     Returns:
-        User: user object.
+        User | None: User object if found, otherwise None.
     """
     stmt = select(User).where(User.user_id == user_id)
-    return db.execute(stmt).scalars().first()
+    result = await db.execute(stmt)
+    return result.scalars().first()
 
 
-def create_user(db: Session, user: UserCreate) -> User:
-    '''Create user with hashed password.'''
+async def create_customer(db: AsyncSession, user: UserCreate) -> Customer:
+    """
+    Create a customer with a hashed password asynchronously.
+    Args:
+        db (AsyncSession): Asynchronous database session.
+        user (UserCreate): User creation schema with user details.
+    Returns:
+        Customer: Created customer object.
+    """
     hashed_password = get_password_hash(user.password)
-
-    db_user = User(
+    db_user = Customer(
         username=user.username,
         name=user.name,
         password=hashed_password,
@@ -44,9 +51,59 @@ def create_user(db: Session, user: UserCreate) -> User:
         email=user.email,
         address=user.address
     )
-
     db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
 
+
+async def create_admin(db: AsyncSession, user: UserCreate) -> Admin:
+    """
+    Create an admin with a hashed password asynchronously.
+    Args:
+        db (AsyncSession): Asynchronous database session.
+        user (UserCreate): User creation schema with user details.
+    Returns:
+        Admin: Created admin object.
+    """
+    hashed_password = get_password_hash(user.password)
+    db_user = Admin(
+        username=user.username,
+        name=user.name,
+        password=hashed_password,
+        phone=user.phone,
+        email=user.email,
+        address=user.address,
+        discriminator="admin"
+    )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
+
+
+async def create_staff(db: AsyncSession, user: StaffCreate) -> Staff:
+    """
+    Create a staff member with a hashed password asynchronously.
+    Args:
+        db (AsyncSession): Asynchronous database session.
+        user (StaffCreate): User creation schema with user details.
+    Returns:
+        Staff: Created staff object.
+    """
+    hashed_password = get_password_hash(user.password)
+    db_user = Staff(
+        username=user.username,
+        name=user.name,
+        password=hashed_password,
+        phone=user.phone,
+        email=user.email,
+        address=user.address,
+        discriminator="staff",
+        jobtype=user.jobtype,
+        hourly_rate=user.hourly_rate
+    )
+    db.add(db_user)
+    await db.commit()
+    await db.refresh(db_user)
     return db_user

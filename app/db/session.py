@@ -22,7 +22,7 @@ SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,
-    class_=Session
+    class_=AsyncSession
 )
 
 
@@ -32,4 +32,4 @@ async def get_db():
     try:
         yield db
     finally:
-        db.close()
+        await db.close()

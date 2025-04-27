@@ -33,7 +33,7 @@ class StaffJobType(Enum):
 class User(Base):
     __tablename__ = "user"
 
-    user_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String(50), nullable=False)
     username = Column(String(20), unique=True, nullable=False, index=True)
     password = Column(String(128), nullable=False)
@@ -78,7 +78,9 @@ class Staff(User):
     repair_assignments = relationship(
         "RepairAssignment", back_populates="staff")
     repair_orders = relationship(
-        "RepairOrder", secondary="repair_order_staff", back_populates="staff")
+        "RepairOrder", secondary="repair_assignment", back_populates="staffs")
+    repair_logs = relationship(
+        "RepairLog", back_populates="staff")
 
     __mapper_args__ = {
         'polymorphic_identity': 'staff',
@@ -99,6 +101,15 @@ class Customer(User):
 
     customer_id = Column(Integer, ForeignKey("user.user_id"),
                          primary_key=True, index=True)
+
+    vehicles = relationship(
+        "Vehicle", back_populates="customer")
+    feedbacks = relationship(
+        "Feedback", back_populates="customer")
+    repair_requests = relationship(
+        "RepairRequest", back_populates="customer")
+    repair_orders = relationship(
+        "RepairOrder", back_populates="customer")
 
     __mapper_args__ = {
         'polymorphic_identity': 'customer',

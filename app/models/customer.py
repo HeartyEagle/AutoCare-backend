@@ -52,7 +52,8 @@ class VehicleColor(str, Enum):
 class Vehicle(Base):
     __tablename__ = "vehicle"
 
-    vehicle_id = Column(Integer, primary_key=True, index=True)
+    vehicle_id = Column(Integer, primary_key=True,
+                        index=True, autoincrement=True)
     customer_id = Column(Integer, ForeignKey(
         "customer.customer_id"), nullable=False)
     license_plate = Column(String(20), unique=True, nullable=False)
@@ -62,15 +63,28 @@ class Vehicle(Base):
     color = Column(SQLAlchemyEnum(VehicleColor), nullable=False)
     remarks = Column(String(200), nullable=True)
 
+    customer = relationship(
+        "Customer", back_populates="vehicles")
+    repair_requests = relationship(
+        "RepairRequest", back_populates="vehicle")
+    repair_orders = relationship(
+        "RepairOrder", back_populates="vehicle")
+
 
 class Feedback(Base):
     __tablename__ = "feedback"
 
-    feedback_id = Column(Integer, primary_key=True, index=True)
+    feedback_id = Column(Integer, primary_key=True,
+                         index=True, autoincrement=True)
     customer_id = Column(Integer, ForeignKey(
         "customer.customer_id"), nullable=False)
-    repair_log_id = Column(Integer, ForeignKey(
+    log_id = Column(Integer, ForeignKey(
         "repair_log.log_id"), nullable=False)
     rating = Column(Integer, nullable=False)
     comments = Column(String(255), nullable=True)
     feedback_time = Column(DateTime(timezone=True), server_default=func.now())
+
+    customer = relationship(
+        "Customer", back_populates="feedbacks")
+    repair_log = relationship(
+        "RepairLog", back_populates="feedbacks")
