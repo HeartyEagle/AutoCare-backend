@@ -1,8 +1,10 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from ..models.user import User, Admin, Staff, Customer
-from ..schemas.user import UserCreate, StaffCreate
+from ..schemas.auth import UserCreate, StaffCreate
 from ..core.security import get_password_hash
+from ..events.audit_log_events import log_audit_event, object_to_dict
+from ..models.audit import OperationType
 
 
 async def get_user_by_username(db: AsyncSession, username: str) -> User | None:
@@ -52,6 +54,14 @@ async def create_customer(db: AsyncSession, user: UserCreate) -> Customer:
         address=user.address
     )
     db.add(db_user)
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_user,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_user),
+        operated_by=None
+    )
     await db.commit()
     await db.refresh(db_user)
     return db_user
@@ -77,6 +87,14 @@ async def create_admin(db: AsyncSession, user: UserCreate) -> Admin:
         discriminator="admin"
     )
     db.add(db_user)
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_user,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_user),
+        operated_by=None
+    )
     await db.commit()
     await db.refresh(db_user)
     return db_user
@@ -105,6 +123,14 @@ async def create_staff(db: AsyncSession, user: StaffCreate) -> Staff:
     )
     db.add(db_user)
     await db.commit()
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_user,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_user),
+        operated_by=None
+    )
     await db.refresh(db_user)
     return db_user
 
@@ -124,10 +150,19 @@ async def update_user_info(user_id: int, name: str, email: str, address: str, ph
     """
     db_user = await get_user_by_id(db, user_id)
     if db_user:
+        old_data = object_to_dict(db_user)
         db_user.name = name
         db_user.email = email
         db_user.address = address
         db_user.phone = phone
+        await log_audit_event(
+            db=db,
+            target=db_user,
+            operation=OperationType.UPDATE,
+            old_data=old_data,
+            new_data=object_to_dict(db_user),
+            operated_by=None
+        )
         await db.commit()
         await db.refresh(db_user)
     return db_user

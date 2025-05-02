@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, DateTime
 
 from ..models.repair import RepairRequest, RepairAssignment, RepairOrder, RepairStatus, StaffJobType, RepairLog, Material
+from ..events.audit_log_events import log_audit_event, object_to_dict
+from ..models.audit import OperationType
 
 
 async def create_repair_request(vehicle_id: int, customer_id: int, description: str, db: AsyncSession) -> RepairRequest:
@@ -22,6 +24,13 @@ async def create_repair_request(vehicle_id: int, customer_id: int, description: 
         description=description
     )
     db.add(db_request)
+    await db.flush()  # Ensure the request is added to the session
+    await log_audit_event(
+        db=db,
+        target=db_request,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_request),
+        operated_by=customer_id)
     await db.commit()
     await db.refresh(db_request)
     return db_request
@@ -58,6 +67,13 @@ async def create_repair_assignment(order_id: int, staff_id: int, time_worked: Op
         time_worked=time_worked
     )
     db.add(db_assignment)
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_assignment,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_assignment),
+        operated_by=None)
     await db.commit()
     await db.refresh(db_assignment)
     return db_assignment
@@ -105,6 +121,13 @@ async def create_repair_order(order_id: int, vehicle_id: int, customer_id: int, 
         remarks=remarks
     )
     db.add(db_order)
+    await db.flush()  # Ensure the order is added to the session
+    await log_audit_event(
+        db=db,
+        target=db_order,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_order),
+        operated_by=None)
     await db.commit()
     await db.refresh(db_order)
     return db_order
@@ -124,7 +147,7 @@ async def get_repair_order_by_id(db: AsyncSession, order_id: int) -> Optional[Re
     return result.scalars().first()
 
 
-async def update_repair_order_status(order_id: int, status: RepairStatus, db: AsyncSession) -> RepairOrder:
+async def update_repair_order_status(order_id: int, status: RepairStatus, operated_by: int, db: AsyncSession) -> RepairOrder:
     """
     Update the status of a repair order.
     Args:
@@ -136,7 +159,16 @@ async def update_repair_order_status(order_id: int, status: RepairStatus, db: As
     """
     db_order = await get_repair_order_by_id(db, order_id)
     if db_order:
+        old_data = object_to_dict(db_order)
         db_order.status = status
+        await log_audit_event(
+            db=db,
+            target=db_order,
+            operation=OperationType.UPDATE,
+            old_data=old_data,
+            new_data=object_to_dict(db_order),
+            operated_by=None
+        )
         await db.commit()
         await db.refresh(db_order)
     return db_order
@@ -154,9 +186,41 @@ async def update_repair_order_finish_time(order_id: int, finish_time: DateTime, 
     """
     db_order = await get_repair_order_by_id(db, order_id)
     if db_order:
+        old_data = object_to_dict(db_order)
         db_order.finish_time = finish_time
+        await log_audit_event(
+            db=db,
+            target=db_order,
+            operation=OperationType.UPDATE,
+            old_data=old_data,
+            new_data=object_to_dict(db_order),
+            operated_by=None
+        )
         await db.commit()
         await db.refresh(db_order)
+    return db_order
+
+
+async def delete_repair_order(order_id: int, operated_by: int, db: AsyncSession) -> Optional[RepairOrder]:
+    """
+    Delete a repair order by ID.
+    Args:
+        order_id (int): ID of the repair order.
+        db (Session): Database session.
+    Returns:
+        RepairOrder: The deleted repair order if found, otherwise None.
+    """
+    db_order = await get_repair_order_by_id(db, order_id)
+    if db_order:
+        await log_audit_event(
+            db=db,
+            target=db_order,
+            operation=OperationType.DELETE,
+            old_data=object_to_dict(db_order),
+            operated_by=operated_by
+        )
+        await db.delete(db_order)
+        await db.commit()
     return db_order
 
 
@@ -178,6 +242,13 @@ async def create_repair_log(order_id: int, staff_id: int, log_message: str, db: 
         log_message=log_message
     )
     db.add(db_log)
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_log,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_log),
+        operated_by=staff_id)
     await db.commit()
     await db.refresh(db_log)
     return db_log
@@ -218,6 +289,13 @@ async def create_material(log_id: int, name: str, quantity: float, unit_price: f
         remarks=remarks
     )
     db.add(db_material)
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_material,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_material),
+        operated_by=None)
     await db.commit()
     await db.refresh(db_material)
     return db_material

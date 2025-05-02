@@ -38,10 +38,12 @@ class RepairRequest(Base):
 class RepairAssignment(Base):
     __tablename__ = "repair_assignment"
 
+    assignment_id = Column(Integer, primary_key=True,
+                           index=True, autoincrement=True)
     order_id = Column(Integer, ForeignKey(
-        "repair_order.order_id"), primary_key=True)
+        "repair_order.order_id"), nullable=False)
     staff_id = Column(Integer, ForeignKey(
-        "staff.staff_id"), primary_key=True)
+        "staff.staff_id"), nullable=False)
     time_worked = Column(Float, nullable=True)
 
     repair_order = relationship(
@@ -74,11 +76,12 @@ class RepairOrder(Base):
 
     repair_request = relationship(
         "RepairRequest", back_populates="repair_orders")
-    repair_logs = relationship("RepairLog", back_populates="repair_order")
+    repair_logs = relationship(
+        "RepairLog", back_populates="repair_order", cascade="all, delete-orphan")
     staffs = relationship(
         "Staff", secondary="repair_assignment", back_populates="repair_orders")
     repair_assignments = relationship(
-        "RepairAssignment", back_populates="repair_order")
+        "RepairAssignment", back_populates="repair_order", cascade="all, delete-orphan")
     vehicle = relationship("Vehicle", back_populates="repair_orders")
     customer = relationship("Customer", back_populates="repair_orders")
 
@@ -106,7 +109,8 @@ class RepairLog(Base):
     log_time = Column(DateTime(timezone=True), server_default=func.now())
     log_message = Column(String(255), nullable=False)
 
-    materials = relationship("Material", back_populates="repair_log")
+    materials = relationship(
+        "Material", back_populates="repair_log", cascade="all, delete-orphan")
     repair_order = relationship(
         "RepairOrder", back_populates="repair_logs")
     feedbacks = relationship(

@@ -3,11 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ..models.customer import Vehicle, VehicleBrand, VehicleType, VehicleColor, Feedback
+from ..events.audit_log_events import log_audit_event, object_to_dict
+from ..models.audit import OperationType
 
 
 async def create_vehicle(
         customer_id: int, license_plate: str, brand: VehicleBrand, model: str,
-        type: VehicleType, color: VehicleColor, remarks: Optional[str], db: AsyncSession) -> Vehicle:
+        type: VehicleType, color: VehicleColor, remarks: Optional[str], operated_by: int, db: AsyncSession) -> Vehicle:
     """
     Create a new vehicle for a customer.
     Args:
@@ -30,6 +32,14 @@ async def create_vehicle(
         remarks=remarks
     )
     db.add(db_vehicle)
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_vehicle,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_vehicle),
+        operated_by=operated_by
+    )
     await db.commit()
     await db.refresh(db_vehicle)
     return db_vehicle
@@ -50,7 +60,7 @@ async def get_vehicle_by_id(db: AsyncSession, vehicle_id: int) -> Vehicle | None
 
 
 async def create_feedback(
-        customer_id: int, log_id: int, rating: int, comments: Optional[str], db: AsyncSession) -> Feedback:
+        customer_id: int, log_id: int, rating: int, comments: Optional[str], operated_by: int, db: AsyncSession) -> Feedback:
     """
     Create a new feedback for a repair log.
     Args:
@@ -69,6 +79,14 @@ async def create_feedback(
         comments=comments
     )
     db.add(db_feedback)
+    await db.flush()
+    await log_audit_event(
+        db=db,
+        target=db_feedback,
+        operation=OperationType.INSERT,
+        new_data=object_to_dict(db_feedback),
+        operated_by=operated_by
+    )
     await db.commit()
     await db.refresh(db_feedback)
     return db_feedback

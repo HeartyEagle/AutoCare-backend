@@ -11,8 +11,8 @@ app = FastAPI(debug=True)
 
 
 @contextmanager
-def lifespan(app: FastAPI):
-    init_db()
+async def lifespan(app: FastAPI):
+    await init_db()
     yield
 
 

@@ -9,10 +9,8 @@ from jose import JWTError, jwt
 
 from ..core.security import verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 from ..crud.user import get_user_by_username, create_customer
-from ..schemas.user import UserCreate
+from ..schemas.auth import UserCreate, UserLogin, Token, RegisterResponse
 from ..db.session import get_db
-from ..schemas.user import UserLogin
-from ..schemas.auth import Token, RegisterResponse
 from ..models.user import User
 
 # the auth api router
