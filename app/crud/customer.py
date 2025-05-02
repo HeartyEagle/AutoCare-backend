@@ -1,31 +1,8 @@
-from sqlalchemy.orm import Session
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from ..models.repair import RepairRequest
-from ..models.customer import Vehicle, VehicleBrand, VehicleType, VehicleColor
-
-
-async def create_repair_request(vehicle_id: int, customer_id: int, description: str, db: AsyncSession) -> RepairRequest:
-    """
-    Create a new repair request.
-    Args:
-        vehicle_id (int): ID of the vehicle.
-        customer_id (int): ID of the customer.
-        description (str): Description of the repair request.
-        db (Session): Database session.
-    Returns:
-        RepairRequest: The created repair request.
-    """
-    db_request = RepairRequest(
-        vehicle_id=vehicle_id,
-        customer_id=customer_id,
-        description=description
-    )
-    db.add(db_request)
-    await db.commit()
-    await db.refresh(db_request)
-    return db_request
+from ..models.customer import Vehicle, VehicleBrand, VehicleType, VehicleColor, Feedback
 
 
 async def create_vehicle(
@@ -56,3 +33,56 @@ async def create_vehicle(
     await db.commit()
     await db.refresh(db_vehicle)
     return db_vehicle
+
+
+async def get_vehicle_by_id(db: AsyncSession, vehicle_id: int) -> Vehicle | None:
+    """
+    Get a vehicle by ID asynchronously.
+    Args:
+        db (AsyncSession): Asynchronous database session.
+        vehicle_id (int): ID of the vehicle.
+    Returns:
+        Vehicle | None: Vehicle object if found, otherwise None.
+    """
+    stmt = select(Vehicle).where(Vehicle.vehicle_id == vehicle_id)
+    result = await db.execute(stmt)
+    return result.scalars().first()
+
+
+async def create_feedback(
+        customer_id: int, log_id: int, rating: int, comments: Optional[str], db: AsyncSession) -> Feedback:
+    """
+    Create a new feedback for a repair log.
+    Args:
+        customer_id (int): ID of the customer.
+        log_id (int): ID of the repair log.
+        rating (int): Rating given by the customer.
+        comments (str): Comments provided by the customer.
+        db (Session): Database session.
+    Returns:
+        Feedback: The created feedback.
+    """
+    db_feedback = Feedback(
+        customer_id=customer_id,
+        log_id=log_id,
+        rating=rating,
+        comments=comments
+    )
+    db.add(db_feedback)
+    await db.commit()
+    await db.refresh(db_feedback)
+    return db_feedback
+
+
+async def get_feedback_by_id(db: AsyncSession, feedback_id: int) -> Feedback | None:
+    """
+    Get a feedback by ID asynchronously.
+    Args:
+        db (AsyncSession): Asynchronous database session.
+        feedback_id (int): ID of the feedback.
+    Returns:
+        Feedback | None: Feedback object if found, otherwise None.
+    """
+    stmt = select(Feedback).where(Feedback.feedback_id == feedback_id)
+    result = await db.execute(stmt)
+    return result.scalars().first()

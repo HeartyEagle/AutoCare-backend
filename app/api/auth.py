@@ -83,26 +83,30 @@ async def verify_token(
         HTTPException: if token verification fails.
     """
     token = token_req.access_token  # The raw token string
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+    # credentials_exception = HTTPException(
+    #     status_code=status.HTTP_401_UNAUTHORIZED,
+    #     detail="Could not validate credentials",
+    #     headers={"WWW-Authenticate": "Bearer"},
+    # )
+    unauth_response = {
+        "status": "failure",
+        "message": "Token is invalid or expired"
+    }
 
     try:
         # Decode the token using the same SECRET_KEY and ALGORITHM
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if not username:
-            raise credentials_exception
+            return unauth_response
     except JWTError:
-        raise credentials_exception
+        return unauth_response
 
     user = await get_user_by_username(db, username)
     if user is None:
-        raise credentials_exception
+        return unauth_response
 
-    return {"valid": True}
+    return {"status": "success"}
 
 
 @router.post("/register", response_model=RegisterResponse)

@@ -107,3 +107,27 @@ async def create_staff(db: AsyncSession, user: StaffCreate) -> Staff:
     await db.commit()
     await db.refresh(db_user)
     return db_user
+
+
+async def update_user_info(user_id: int, name: str, email: str, address: str, phone: str, db: AsyncSession) -> User | None:
+    """
+    Update user information asynchronously.
+    Args:
+        user_id (int): ID of the user to update.
+        name (str): New name of the user.
+        email (str): New email of the user.
+        address (str): New address of the user.
+        phone (str): New phone number of the user.
+        db (AsyncSession): Asynchronous database session.
+    Returns:
+        User | None: Updated user object if found, otherwise None.
+    """
+    db_user = await get_user_by_id(db, user_id)
+    if db_user:
+        db_user.name = name
+        db_user.email = email
+        db_user.address = address
+        db_user.phone = phone
+        await db.commit()
+        await db.refresh(db_user)
+    return db_user
