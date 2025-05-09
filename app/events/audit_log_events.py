@@ -51,7 +51,6 @@ async def log_audit_event(
     operation: OperationType,
     old_data: Optional[Dict[str, Any]] = None,
     new_data: Optional[Dict[str, Any]] = None,
-    operated_by: Optional[int] = None
 ) -> None:
     try:
         audit_log = AuditLog(
@@ -60,7 +59,6 @@ async def log_audit_event(
             operation=operation,
             old_data=json.dumps(old_data) if old_data else None,
             new_data=json.dumps(new_data) if new_data else None,
-            operated_by=operated_by
         )
         db.add(audit_log)
         await db.commit()

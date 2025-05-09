@@ -1,144 +1,89 @@
-from sqlalchemy import Boolean, Column, Integer, String, DateTime, Float
-from sqlalchemy.sql import func
-from sqlalchemy import Enum as SQLAlchemyEnum
-from sqlalchemy import ForeignKey
-from ..db.base import Base
-from enum import Enum
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import relationship
-
-from ..models.user import StaffJobType
+# models/repair_models.py
+from dataclasses import dataclass
+from typing import Optional, List
+from datetime import datetime
+from .enums import RepairStatus, StaffJobType
 
 
-class RepairStatus(str, Enum):
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
-    CANCELLED = "Cancelled"
+@dataclass
+class RepairRequest:
+    # Primary key, optional for new objects before DB insert
+    request_id: Optional[int] = None
+    vehicle_id: int = 0  # Foreign key to vehicle
+    customer_id: int = 0  # Foreign key to customer
+    description: str = ""
+    request_time: Optional[datetime] = None
 
 
-class RepairRequest(Base):
-    __tablename__ = "repair_request"
+@dataclass
+class RepairAssignment:
+    # Primary key, optional for new objects
+    assignment_id: Optional[int] = None
+    order_id: int = 0  # Foreign key to repair_order
+    staff_id: int = 0  # Foreign key to staff
+    time_worked: Optional[float] = None
 
-    request_id = Column(Integer, primary_key=True,
-                        index=True, autoincrement=True)
-    vehicle_id = Column(Integer, ForeignKey(
-        "vehicle.vehicle_id"), nullable=False)
-    customer_id = Column(Integer, ForeignKey(
-        "customer.customer_id"), nullable=False)
-    description = Column(String(255), nullable=False)
-    request_time = Column(DateTime(timezone=True), server_default=func.now())
-
-    repair_orders = relationship(
-        "RepairOrder", back_populates="repair_request")
-    vehicle = relationship("Vehicle", back_populates="repair_requests")
-    customer = relationship("Customer", back_populates="repair_requests")
-
-
-class RepairAssignment(Base):
-    __tablename__ = "repair_assignment"
-
-    assignment_id = Column(Integer, primary_key=True,
-                           index=True, autoincrement=True)
-    order_id = Column(Integer, ForeignKey(
-        "repair_order.order_id"), nullable=False)
-    staff_id = Column(Integer, ForeignKey(
-        "staff.staff_id"), nullable=False)
-    time_worked = Column(Float, nullable=True)
-
-    repair_order = relationship(
-        "RepairOrder", back_populates="repair_assignments")
-    staff = relationship("Staff", back_populates="repair_assignments")
-
-    @hybrid_property
-    def assignment_fee(self):
-        if self.time_worked and self.staff:
+    @property
+    def assignment_fee(self) -> float:
+        """Calculate assignment fee based on time worked and staff hourly rate."""
+        if self.time_worked and self.staff and hasattr(self.staff, 'hourly_rate'):
             return self.time_worked * self.staff.hourly_rate
-        return 0
+        return 0.0
 
 
-class RepairOrder(Base):
-    __tablename__ = "repair_order"
+@dataclass
+class RepairOrder:
+    order_id: Optional[int] = None  # Primary key, optional for new objects
+    vehicle_id: int = 0  # Foreign key to vehicle
+    customer_id: int = 0  # Foreign key to customer
+    request_id: int = 0  # Foreign key to repair_request
+    required_staff_type: Optional[StaffJobType] = None
+    status: Optional[RepairStatus] = None
+    order_time: Optional[datetime] = None
+    finish_time: Optional[datetime] = None
+    remarks: Optional[str] = None
 
-    order_id = Column(Integer, primary_key=True,
-                      index=True, autoincrement=True)
-    vehicle_id = Column(Integer, ForeignKey(
-        "vehicle.vehicle_id"), nullable=False)
-    customer_id = Column(Integer, ForeignKey(
-        "customer.customer_id"), nullable=False)
-    request_id = Column(Integer, ForeignKey(
-        "repair_request.request_id"), nullable=False)
-    required_staff_type = Column(SQLAlchemyEnum(StaffJobType), nullable=False)
-    status = Column(SQLAlchemyEnum(RepairStatus), nullable=False)
-    order_time = Column(DateTime(timezone=True), server_default=func.now())
-    finish_time = Column(DateTime(timezone=True), nullable=True)
-    remarks = Column(String(255), nullable=True)
+    @property
+    def material_fee(self) -> float:
+        """Calculate total material fee from repair logs if status is COMPLETED."""
+        if self.status == RepairStatus.COMPLETED and self.repair_logs:
+            return sum(log.material_fee for log in self.repair_logs if log.material_fee)
+        return 0.0
 
-    repair_request = relationship(
-        "RepairRequest", back_populates="repair_orders")
-    repair_logs = relationship(
-        "RepairLog", back_populates="repair_order", cascade="all, delete-orphan")
-    staffs = relationship(
-        "Staff", secondary="repair_assignment", back_populates="repair_orders")
-    repair_assignments = relationship(
-        "RepairAssignment", back_populates="repair_order", cascade="all, delete-orphan")
-    vehicle = relationship("Vehicle", back_populates="repair_orders")
-    customer = relationship("Customer", back_populates="repair_orders")
-
-    @hybrid_property
-    def material_fee(self):
-        if self.status == RepairStatus.COMPLETED:
-            return sum(log.material_fee for log in self.repair_logs)
-        return 0
-
-    @hybrid_property
-    def labor_fee(self):
-        if self.status == RepairStatus.COMPLETED:
-            return sum(assignment.assignment_fee for assignment in self.repair_assignments)
-        return 0
+    @property
+    def labor_fee(self) -> float:
+        """Calculate total labor fee from repair assignments if status is COMPLETED."""
+        if self.status == RepairStatus.COMPLETED and self.repair_assignments:
+            return sum(assignment.assignment_fee for assignment in self.repair_assignments if assignment.assignment_fee)
+        return 0.0
 
 
-class RepairLog(Base):
-    __tablename__ = "repair_log"
+@dataclass
+class RepairLog:
+    log_id: Optional[int] = None  # Primary key, optional for new objects
+    order_id: int = 0  # Foreign key to repair_order
+    staff_id: int = 0  # Foreign key to staff
+    log_time: Optional[datetime] = None
+    log_message: str = ""
 
-    log_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    order_id = Column(Integer, ForeignKey(
-        "repair_order.order_id"), nullable=False)
-    staff_id = Column(Integer, ForeignKey(
-        "staff.staff_id"), nullable=False)
-    log_time = Column(DateTime(timezone=True), server_default=func.now())
-    log_message = Column(String(255), nullable=False)
-
-    materials = relationship(
-        "Material", back_populates="repair_log", cascade="all, delete-orphan")
-    repair_order = relationship(
-        "RepairOrder", back_populates="repair_logs")
-    feedbacks = relationship(
-        "Feedback", back_populates="repair_log")
-    staff = relationship("Staff", back_populates="repair_logs")
-
-    @hybrid_property
-    def material_fee(self):
-        if self.material:
-            return sum(
-                material.total_price for material in self.materials)
-        return 0
+    @property
+    def material_fee(self) -> float:
+        """Calculate total material fee from materials."""
+        if self.materials:
+            return sum(material.total_price for material in self.materials if material.total_price)
+        return 0.0
 
 
-class Material(Base):
-    __tablename__ = "material"
+@dataclass
+class Material:
+    material_id: Optional[int] = None  # Primary key, optional for new objects
+    log_id: int = 0  # Foreign key to repair_log
+    name: str = ""
+    quantity: float = 0.0
+    unit_price: float = 0.0
+    remarks: Optional[str] = None
 
-    material_id = Column(Integer, primary_key=True,
-                         index=True, autoincrement=True)
-    log_id = Column(Integer, ForeignKey(
-        "repair_log.log_id"), nullable=False)
-    name = Column(String(50), nullable=False)
-    quantity = Column(Float, nullable=False)
-    unit_price = Column(Float, nullable=False)
-    remarks = Column(String(255), nullable=True)
-
-    repair_log = relationship("RepairLog", back_populates="materials")
-
-    @hybrid_property
-    def total_price(self):
+    @property
+    def total_price(self) -> float:
+        """Calculate total price as quantity * unit_price."""
         return self.quantity * self.unit_price
