@@ -1,10 +1,9 @@
-# services/user_service.py
-from db.connection import Database
-from models.user import User, Admin, Staff, Customer
-from models.enums import StaffJobType, OperationType
+from ..db.connection import Database
+from ..models.user import User, Admin, Staff, Customer
+from ..models.enums import StaffJobType, OperationType
 from .audit import AuditLogService
-from core.security import get_password_hash
-from schemas.auth import UserCreate, StaffCreate
+from ..core.security import get_password_hash
+from ..schemas.auth import UserCreate, StaffCreate
 from typing import Optional, Dict, Any
 
 
@@ -237,7 +236,7 @@ class UserService:
             "discriminator": discriminator
         }
         if discriminator == "admin":
-            return Admin(**user_data, admin_id=row[0])
+            return Admin(**user_data)
         elif discriminator == "staff":
             # Fetch staff-specific fields
             staff_query = "SELECT jobtype, hourly_rate FROM staff WHERE staff_id = ?"
@@ -250,7 +249,7 @@ class UserService:
                 })
             return Staff(**user_data)
         elif discriminator == "customer":
-            return Customer(**user_data, customer_id=row[0])
+            return Customer(**user_data)
         return User(**user_data)
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:

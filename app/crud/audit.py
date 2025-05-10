@@ -1,7 +1,7 @@
 import json
-from db.connection import Database
-from models.audit import AuditLog
-from models.enums import OperationType
+from ..db.connection import Database
+from ..models.audit import AuditLog
+from ..models.enums import OperationType
 
 
 class AuditLogService:

@@ -3,36 +3,15 @@ from fastapi import APIRouter, Depends, Request, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from typing import Dict, Any
-from db.connection import Database
+from ..db.connection import Database
 from ..crud.user import UserService
 from ..core.security import verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
-from schemas.auth import UserCreate, UserLogin, Token, RegisterResponse
+from ..core.dependencies import get_db, get_user_service
+from ..schemas.auth import UserCreate, UserLogin, Token, RegisterResponse
 from ..models.user import User
 
 # The auth API router
 router = APIRouter(prefix="/auth", tags=["authentication"])
-
-
-def get_db(request: Request):
-    """
-    Dependency to get the database instance from app.state.
-    Args:
-        request (Request): FastAPI request object.
-    Returns:
-        Database: Database instance stored in app.state.
-    """
-    return request.app.state.db
-
-
-def get_user_service(db: Database = Depends(get_db)):
-    """
-    Dependency to get the UserService instance.
-    Args:
-        db (Database): Database instance.
-    Returns:
-        UserService: Instance of UserService for user-related operations.
-    """
-    return UserService(db)
 
 
 @router.post("/login", response_model=Token)

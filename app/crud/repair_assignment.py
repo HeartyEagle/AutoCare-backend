@@ -1,7 +1,6 @@
-# services/repair_assignment_service.py
-from db.connection import Database
-from models.repair import RepairAssignment
-from models.enums import OperationType
+from ..db.connection import Database
+from ..models.repair import RepairAssignment
+from ..models.enums import OperationType
 from .audit import AuditLogService
 from typing import Optional, Dict, Any
 

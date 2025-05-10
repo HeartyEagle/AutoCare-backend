@@ -1,10 +1,10 @@
 # services/vehicle_service.py
-from db.connection import Database
-from models.customer import Vehicle
-from models.enums import VehicleBrand, VehicleType, VehicleColor
-from models.enums import OperationType
+from ..db.connection import Database
+from ..models.customer import Vehicle
+from ..models.enums import VehicleBrand, VehicleType, VehicleColor
+from ..models.enums import OperationType
 from .audit import AuditLogService
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class VehicleService:
@@ -94,6 +94,34 @@ class VehicleService:
                 remarks=rows[0][7] if rows[0][7] else None
             )
         return None
+
+    def get_vehicles_by_customer_id(self, customer_id: int) -> List[Vehicle]:
+        """
+        Get vehicles by customer ID.
+        Args:
+            customer_id (int): ID of the customer.
+        Returns:
+            Optional[Vehicle]: Vehicle object if found, otherwise None.
+        """
+        select_query = """
+            SELECT vehicle_id, customer_id, license_plate, brand, model, type, color, remarks
+            FROM vehicle
+            WHERE customer_id = ?
+        """
+        rows = self.db.execute_query(select_query, (customer_id,))
+        vehicles = [
+            Vehicle(
+                vehicle_id=row[0],
+                customer_id=row[1],
+                license_plate=row[2],
+                brand=VehicleBrand(row[3]) if row[3] else None,
+                model=row[4],
+                type=VehicleType(row[5]) if row[5] else None,
+                color=VehicleColor(row[6]) if row[6] else None,
+                remarks=row[7] if row[7] else None
+            ) for row in rows
+        ]
+        return vehicles
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         """

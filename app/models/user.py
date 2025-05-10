@@ -10,7 +10,6 @@ class User:
     user_id: Optional[int] = None
     name: str = ""
     username: str = ""
-    # Note: In a real app, avoid storing plain text passwords; this is just for structure
     password: str = ""
     phone: str = ""
     email: str = ""
@@ -46,6 +45,7 @@ class Staff(User):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.staff_id = kwargs.get("staff_id", self.user_id)
         self.discriminator = "staff"
 
     def __repr__(self) -> str:
@@ -67,6 +67,7 @@ class Customer(User):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.customer_id = kwargs.get("customer_id", self.user_id)
         self.discriminator = "customer"
 
     def __repr__(self) -> str:

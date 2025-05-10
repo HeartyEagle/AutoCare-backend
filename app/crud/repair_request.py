@@ -1,9 +1,9 @@
 # services/repair_request_service.py
-from db.connection import Database
-from models.repair import RepairRequest
-from models.enums import OperationType
+from ..db.connection import Database
+from ..models.repair import RepairRequest
+from ..models.enums import OperationType
 from .audit import AuditLogService
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class RepairRequestService:
@@ -70,6 +70,31 @@ class RepairRequestService:
                 request_time=rows[0][4] if rows[0][4] else None
             )
         return None
+
+    def get_repair_requests_by_customer_id(self, customer_id: int) -> List[RepairRequest]:
+        """
+        Get all repair requests for a specific customer.
+        Args:
+            customer_id (int): ID of the customer.
+        Returns:
+            List[RepairRequest]: List of RepairRequest objects.
+        """
+        select_query = """
+            SELECT request_id, vehicle_id, customer_id, description, request_time
+            FROM repair_request
+            WHERE customer_id = ?
+        """
+        rows = self.db.execute_query(select_query, (customer_id,))
+        return [
+            RepairRequest(
+                request_id=row[0],
+                vehicle_id=row[1],
+                customer_id=row[2],
+                description=row[3],
+                request_time=row[4] if row[4] else None
+            )
+            for row in rows
+        ] if rows else []
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         if not obj:

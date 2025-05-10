@@ -1,11 +1,9 @@
-# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from contextlib import asynccontextmanager
-from db.connection import Database
-# Assuming api/auth.py contains your authentication routes
-from api.auth import router as auth_router
+from .db.connection import Database
+from .api.auth import router as auth_router
 
 
 @asynccontextmanager
@@ -52,4 +50,4 @@ def root():
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8090, reload=True)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8090, reload=True)

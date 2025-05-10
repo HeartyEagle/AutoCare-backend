@@ -1,9 +1,8 @@
-# services/repair_order_service.py
-from db.connection import Database
-from models.repair import RepairOrder
-from models.enums import RepairStatus, StaffJobType, OperationType
+from ..db.connection import Database
+from ..models.repair import RepairOrder
+from ..models.enums import RepairStatus, StaffJobType, OperationType
 from .audit import AuditLogService
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 
@@ -86,6 +85,34 @@ class RepairOrderService:
                 remarks=rows[0][8] if rows[0][8] else None
             )
         return None
+
+    def get_repair_orders_by_customer_id(self, customer_id: int) -> List[RepairOrder]:
+        """
+        Get all repair orders for a specific customer.
+        Args:
+            customer_id (int): ID of the customer.
+        Returns:
+            List[RepairOrder]: List of RepairOrder objects.
+        """
+        select_query = """
+            SELECT order_id, vehicle_id, customer_id, request_id, required_staff_type, status, order_time, finish_time, remarks
+            FROM repair_order
+            WHERE customer_id = ?
+        """
+        rows = self.db.execute_query(select_query, (customer_id,))
+        return [
+            RepairOrder(
+                order_id=row[0],
+                vehicle_id=row[1],
+                customer_id=row[2],
+                request_id=row[3],
+                required_staff_type=StaffJobType(row[4]) if row[4] else None,
+                status=RepairStatus(row[5]) if row[5] else None,
+                order_time=row[6] if row[6] else None,
+                finish_time=row[7] if row[7] else None,
+                remarks=row[8] if row[8] else None
+            ) for row in rows
+        ] if rows else []
 
     def update_repair_order_status(self, order_id: int, status: RepairStatus) -> Optional[RepairOrder]:
         """

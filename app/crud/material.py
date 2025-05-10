@@ -1,7 +1,7 @@
 # services/material_service.py
-from db.connection import Database
-from models.repair import Material
-from models.enums import OperationType
+from ..db.connection import Database
+from ..models.repair import Material
+from ..models.enums import OperationType
 from .audit import AuditLogService
 from typing import Optional, Dict, Any
 

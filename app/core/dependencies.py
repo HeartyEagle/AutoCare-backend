@@ -4,6 +4,10 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from db.connection import Database
 from ..crud.user import UserService
+from ..crud.vehicle import VehicleService
+from ..crud.repair_request import RepairRequestService
+from ..crud.repair_order import RepairOrderService
+from ..crud.repair_log import RepairLogService
 from core.security import SECRET_KEY, ALGORITHM
 from schemas.auth import TokenPayload
 from models.user import User
@@ -31,6 +35,43 @@ def get_user_service(db: Database = Depends(get_db)):
         UserService: Instance of UserService for user-related operations.
     """
     return UserService(db)
+
+
+def get_vehicle_service(db: Database = Depends(get_db)):
+    """
+    Dependency to get the VehicleService instance.
+    Args:
+        db (Database): Database instance.
+    Returns:
+        VehicleService: Instance of VehicleService for vehicle-related operations.
+    """
+    return VehicleService(db)
+
+
+def get_repair_request_service(db: Database = Depends(get_db)):
+    """
+    Dependency to get the RepairRequestService instance.
+    Args:
+        db (Database): Database instance.
+    Returns:
+        RepairRequestService: Instance of RepairRequestService for repair request-related operations.
+    """
+    return RepairRequestService(db)
+
+
+def get_repair_order_service(db: Database = Depends(get_db)):
+    """
+    Dependency to get the RepairOrderService instance.
+    Args:
+        db (Database): Database instance.
+    Returns:
+        RepairOrderService: Instance of RepairOrderService for repair order-related operations.
+    """
+    return RepairOrderService(db)
+
+
+def get_repair_log_service(db: Database = Depends(get_db)):
+    return RepairLogService(db)
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), user_service: UserService = Depends(get_user_service)):
