@@ -26,5 +26,19 @@ class AuditLogService:
             new_data=json.dumps(new_data) if new_data else None
         )
         
-        self.db.insert_data(table_name="audit_log", data=audit_log.asdict())
+        from datetime import datetime
+
+        # Get the current date and time in the format SQL expects
+        current_datetime = datetime.now()
+        formatted_datetime = current_datetime.strftime('%Y-%m-%d %H:%M:%S')
+
+        # Prepare the audit log data dictionary
+        audit_log_dict = audit_log.asdict()
+
+        # Make sure 'operated_at' is set correctly
+        audit_log_dict["operated_at"] = formatted_datetime
+        print(audit_log_dict)
+        
+        # Insert the audit log into the database
+        self.db.insert_data(table_name="audit_log", data=audit_log_dict)
         

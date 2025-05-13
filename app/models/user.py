@@ -38,7 +38,10 @@ class Admin(User):
         """Representation of the Admin."""
         return f"<Admin {self.username}>"
     
-    def asdict(self):
+    def asdict(self, only_parent=False):
+        if only_parent:
+            parent_attrs = {attr for attr in vars(User(self.user_id, self.name, self.username, self.password, self.phone, self.email, self.address, self.discriminator))}
+            return {k: v for k, v in asdict(self).items() if k in parent_attrs}
         return asdict(self)
 
 
@@ -65,7 +68,10 @@ class Staff(User):
             return sum(assignment.time_worked for assignment in self.repair_assignments if assignment.time_worked is not None)
         return 0.0
     
-    def asdict(self):
+    def asdict(self, only_parent=False):
+        if only_parent:
+            parent_attrs = {attr for attr in vars(User(self.user_id, self.name, self.username, self.password, self.phone, self.email, self.address, self.discriminator))}
+            return {k: v for k, v in asdict(self).items() if k in parent_attrs}
         return asdict(self)
 
 
@@ -83,5 +89,8 @@ class Customer(User):
         """Representation of the Customer."""
         return f"<Customer {self.username}>"
     
-    def asdict(self):
+    def asdict(self, only_parent=False):
+        if only_parent:
+            parent_attrs = {attr for attr in vars(User(self.user_id, self.name, self.username, self.password, self.phone, self.email, self.address, self.discriminator))}
+            return {k: v for k, v in asdict(self).items() if k in parent_attrs}
         return asdict(self)

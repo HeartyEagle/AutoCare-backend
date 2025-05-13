@@ -35,6 +35,7 @@ def login(
             "status": "failure",
             "message": "Incorrect username or password"
         }
+        
     # Check if the user's role matches the provided role
     if user.discriminator != login_data.role:
         return {

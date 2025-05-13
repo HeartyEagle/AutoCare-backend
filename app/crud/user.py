@@ -6,7 +6,6 @@ from ..core.security import get_password_hash
 from ..schemas.auth import UserCreate, StaffCreate
 from typing import Optional, Dict, Any, List
 
-
 class UserService:
     def __init__(self, db: Database):
         self.db = db
@@ -20,6 +19,7 @@ class UserService:
             where_params=(username,),
             limit=1
         )
+        print(rows)
         return self._map_user_row_to_object(rows[0]) if rows else None
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
@@ -75,18 +75,27 @@ class UserService:
             email=user.email,
             address=user.address
         )
+        
+        print(customer.asdict(only_parent=True))
+        
         self.db.insert_data(
             table_name="user",
-            data=customer.asdict()
+            data=customer.asdict(only_parent=True)
         )
         row = self.db.execute_query("SELECT LAST_INSERT_ID();")
         customer.user_id = int(row[0][0]) if row else None
         customer.customer_id = customer.user_id
+        
+        self.db.insert_data(table_name="customer", data={
+            "customer_id": customer.customer_id
+        })
+        
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=customer.user_id,
             operation=OperationType.INSERT,
-            new_data=self._object_to_dict(customer)
+            new_data=customer.asdict()
+            
         )
         return customer
 
@@ -102,16 +111,21 @@ class UserService:
         )
         self.db.insert_data(
             table_name="user",
-            data=admin.asdict()
+            data=admin.asdict(only_parent=True)
         )
         row = self.db.execute_query("SELECT LAST_INSERT_ID();")
         admin.user_id = int(row[0][0]) if row else None
         admin.admin_id = admin.user_id
+        
+        self.db.insert_data(table_name="admin", data={
+            "admin_id": admin.admin_id
+        })
+        
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=admin.user_id,
             operation=OperationType.INSERT,
-            new_data=self._object_to_dict(admin)
+            new_data=admin.asdict()
         )
         return admin
 
@@ -130,7 +144,7 @@ class UserService:
         # Insert into user table
         self.db.insert_data(
             table_name="user",
-            data=staff.asdict()
+            data=staff.asdict(only_parent=True)
         )
         row = self.db.execute_query("SELECT LAST_INSERT_ID();")
         staff.user_id = int(row[0][0]) if row else None
@@ -144,7 +158,7 @@ class UserService:
             table_name="user",
             record_id=staff.user_id,
             operation=OperationType.INSERT,
-            new_data=self._object_to_dict(staff)
+            new_data=staff.asdict()
         )
         return staff
 
@@ -152,18 +166,22 @@ class UserService:
         user = self.get_user_by_id(user_id)
         if not user:
             return None
-        old = self._object_to_dict(user)
+        old = user.asdict()
         user.name, user.email, user.address, user.phone = name, email, address, phone
-        self.db.execute_non_query(
-            "UPDATE user SET name = ?, email = ?, address = ?, phone = ? WHERE user_id = ?",
-            (user.name, user.email, user.address, user.phone, user_id)
-        )
+        
+        self.db.update_data(table_name="user", data={
+            "name": user.name,
+            "email": user.email,
+            "address": user.address,
+            "phone": user.phone
+        }, where="user_id = ?", where_params=user.user_id)
+        
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=user_id,
             operation=OperationType.UPDATE,
             old_data=old,
-            new_data=self._object_to_dict(user)
+            new_data=user.asdict()
         )
         return user
 
@@ -190,18 +208,3 @@ class UserService:
         if disc == "customer":
             return Customer(**base)
         return User(**base)
-
-    def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
-        if not obj:
-            return {}
-        result: Dict[str, Any] = {}
-        for k, v in vars(obj).items():
-            if k.startswith("_"):
-                continue
-            if isinstance(v, StaffJobType):
-                result[k] = v.value
-            elif k == "password":
-                result[k] = "[REDACTED]"
-            else:
-                result[k] = v
-        return result
