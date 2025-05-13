@@ -14,7 +14,7 @@ from ..models.user import User
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Dict[str, Any])
 def login(
     login_data: UserLogin,
     user_service: UserService = Depends(get_user_service)

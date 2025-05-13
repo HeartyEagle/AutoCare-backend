@@ -1,0 +1,38 @@
+# schemas/staff.py
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+
+
+class StaffProfile(BaseModel):
+    status: str
+    message: Optional[str] = None
+    staff_id: Optional[int] = None
+    name: Optional[str] = None
+    username: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    jobtype: Optional[str] = None
+    hourly_rate: Optional[int] = 0
+
+
+class StaffRepairOrder(BaseModel):
+    order_id: Optional[int] = None
+    vehicle_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    request_id: Optional[int] = None
+    required_staff_type: Optional[str] = None
+    status: Optional[str] = None
+    order_time: Optional[datetime] = None
+    finish_time: Optional[datetime] = None
+    remarks: Optional[str] = None
+    time_worked: Optional[float] = None
+
+
+class StaffRepairOrdersResponse(BaseModel):
+    status: str
+    message: str
+    staff_id: Optional[int] = None
+    staff_name: Optional[str] = None
+    repair_orders: Optional[List[StaffRepairOrder]] = None

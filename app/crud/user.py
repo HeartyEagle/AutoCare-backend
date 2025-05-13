@@ -4,7 +4,7 @@ from ..models.enums import StaffJobType, OperationType
 from .audit import AuditLogService
 from ..core.security import get_password_hash
 from ..schemas.auth import UserCreate, StaffCreate
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class UserService:
@@ -47,6 +47,51 @@ class UserService:
         if rows:
             return self._map_user_row_to_object(rows[0])
         return None
+
+    def get_all_users(self) -> List[User]:
+        """
+        Get all users (customers, staff, admins).
+        Returns:
+            List[User]: List of all user objects.
+        """
+        select_query = """
+            SELECT user_id, name, username, password, phone, email, address, discriminator
+            FROM user
+        """
+        rows = self.db.execute_query(select_query)
+        return [self._map_user_row_to_object(row) for row in rows]
+
+    def get_all_staff(self) -> List[Staff]:
+        """
+        Get all staff members.
+        Returns:
+            List[Staff]: List of all staff member objects.
+        """
+        select_query = """
+            SELECT u.user_id, u.name, u.username, u.password, u.phone, u.email, u.address, u.discriminator,
+                   s.jobtype, s.hourly_rate
+            FROM user u
+            INNER JOIN staff s ON u.user_id = s.staff_id
+            WHERE u.discriminator = 'staff'
+        """
+        rows = self.db.execute_query(select_query)
+        staff_members = []
+        for row in rows:
+            user_data = {
+                "user_id": row[0],
+                "name": row[1],
+                "username": row[2],
+                "password": row[3],
+                "phone": row[4],
+                "email": row[5],
+                "address": row[6],
+                "discriminator": row[7],
+                "staff_id": row[0],
+                "jobtype": StaffJobType(row[8]) if row[8] else None,
+                "hourly_rate": row[9] if row[9] else 0
+            }
+            staff_members.append(Staff(**user_data))
+        return staff_members
 
     def create_customer(self, user: UserCreate) -> Customer:
         """

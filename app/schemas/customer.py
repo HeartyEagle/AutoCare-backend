@@ -79,3 +79,34 @@ class CustomerRepairLogsResponse(BaseModel):
     status: str
     message: Optional[str] = None
     repair_logs: Optional[List[RepairLogResponse]] = None
+
+
+class RepairRequestCreate(BaseModel):
+    vehicle_id: int
+    description: str
+
+
+class CustomerRepairRequestCreateResponse(BaseModel):
+    status: str
+    message: str
+    request_id: Optional[int] = None
+    vehicle_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    description: Optional[str] = None
+    request_time: Optional[datetime] = None
+
+
+class FeedbackCreate(BaseModel):
+    rating: int
+    comments: Optional[str] = None
+
+
+class CustomerFeedbackResponse(BaseModel):
+    status: str
+    message: str
+    feedback_id: Optional[int] = None
+    customer_id: Optional[int] = None
+    log_id: Optional[int] = None
+    rating: Optional[int] = None
+    comments: Optional[str] = None
+    feedback_time: Optional[datetime] = None

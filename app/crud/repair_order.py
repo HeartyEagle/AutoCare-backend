@@ -114,6 +114,69 @@ class RepairOrderService:
             ) for row in rows
         ] if rows else []
 
+    def get_repair_orders_by_staff_id(self, staff_id: int) -> List[Dict[str, Any]]:
+        """
+        Get all repair orders associated with a specific staff member, including working hours.
+        Args:
+            staff_id (int): ID of the staff member.
+        Returns:
+            List[Dict[str, Any]]: List of repair orders with associated working hours for the staff member.
+        """
+        select_query = """
+            SELECT ro.order_id, ro.vehicle_id, ro.customer_id, ro.request_id,
+                   ro.required_staff_type, ro.status, ro.order_time, ro.finish_time, ro.remarks,
+                   ra.time_worked
+            FROM repair_order ro
+            INNER JOIN repair_assignment ra ON ro.order_id = ra.order_id
+            WHERE ra.staff_id = ?
+        """
+        rows = self.db.execute_query(select_query, (staff_id,))
+        repair_orders = [
+            {
+                "order_id": row[0],
+                "vehicle_id": row[1],
+                "customer_id": row[2],
+                "request_id": row[3],
+                "required_staff_type": StaffJobType(row[4]).value if row[4] else None,
+                "status": RepairStatus(row[5]).value if row[5] else None,
+                "order_time": row[6] if row[6] else None,
+                "finish_time": row[7] if row[7] else None,
+                "remarks": row[8] if row[8] else None,
+                # Working hours from repair_assignment
+                "time_worked": row[9] if row[9] else 0.0
+            }
+            for row in rows
+        ]
+        return repair_orders
+
+    def get_all_repair_orders(self) -> List[RepairOrder]:
+        """
+        Get all repair orders in the system.
+        Returns:
+            List[RepairOrder]: List of all repair order objects.
+        """
+        select_query = """
+            SELECT order_id, vehicle_id, customer_id, request_id, required_staff_type,
+                   status, order_time, finish_time, remarks
+            FROM repair_order
+        """
+        rows = self.db.execute_query(select_query)
+        repair_orders = [
+            RepairOrder(
+                order_id=row[0],
+                vehicle_id=row[1],
+                customer_id=row[2],
+                request_id=row[3],
+                required_staff_type=StaffJobType(row[4]) if row[4] else None,
+                status=RepairStatus(row[5]) if row[5] else None,
+                order_time=row[6] if row[6] else None,
+                finish_time=row[7] if row[7] else None,
+                remarks=row[8] if row[8] else None
+            )
+            for row in rows
+        ]
+        return repair_orders
+
     def update_repair_order_status(self, order_id: int, status: RepairStatus) -> Optional[RepairOrder]:
         """
         Update the status of a repair order.

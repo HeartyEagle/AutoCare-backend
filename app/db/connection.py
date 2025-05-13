@@ -97,6 +97,26 @@ class Database:
                     f"Query execution failed: {str(e)}\nQuery: {query}\nParams: {params}")
                 raise Exception(f"Query execution failed: {str(e)}")
 
+    def execute_non_query(self, query: str, params: Tuple[Any, ...] = ()) -> None:
+        """
+        Execute a SQL statement that does not return results (e.g., INSERT, UPDATE, DELETE).
+        Args:
+            query (str): The SQL statement to execute.
+            params (Tuple[Any, ...]): Parameters for the statement to prevent SQL injection.
+        Raises:
+            Exception: If statement execution fails.
+        """
+        with self.get_cursor() as cursor:
+            try:
+                cursor.execute(query, params)
+                self.conn.commit()
+                logger.info(f"Non-query executed successfully: {query}")
+            except pyodbc.Error as e:
+                self.conn.rollback()
+                logger.error(
+                    f"Non-query execution failed: {str(e)}\nQuery: {query}\nParams: {params}")
+                raise Exception(f"Non-query execution failed: {str(e)}")
+
     def init_db(self):
         """
         Initialize the database by creating necessary tables if they don't exist.

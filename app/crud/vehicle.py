@@ -123,6 +123,32 @@ class VehicleService:
         ]
         return vehicles
 
+    def get_all_vehicles(self) -> List[Vehicle]:
+        """
+        Get all vehicles in the system.
+        Returns:
+            List[Vehicle]: List of all vehicle objects.
+        """
+        select_query = """
+            SELECT vehicle_id, customer_id, license_plate, brand, model, type, color, remarks
+            FROM vehicle
+        """
+        rows = self.db.execute_query(select_query)
+        vehicles = [
+            Vehicle(
+                vehicle_id=row[0],
+                customer_id=row[1],
+                license_plate=row[2],
+                brand=VehicleBrand(row[3]) if row[3] else None,
+                model=row[4],
+                type=VehicleType(row[5]) if row[5] else None,
+                color=VehicleColor(row[6]) if row[6] else None,
+                remarks=row[7] if row[7] else None
+            )
+            for row in rows
+        ]
+        return vehicles
+
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         """
         Convert an object to a dictionary for audit logging.

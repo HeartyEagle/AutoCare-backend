@@ -2,15 +2,16 @@
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
-from db.connection import Database
+from ..db.connection import Database
 from ..crud.user import UserService
 from ..crud.vehicle import VehicleService
 from ..crud.repair_request import RepairRequestService
 from ..crud.repair_order import RepairOrderService
 from ..crud.repair_log import RepairLogService
-from core.security import SECRET_KEY, ALGORITHM
-from schemas.auth import TokenPayload
-from models.user import User
+from ..crud.feedback import FeedbackService
+from ..core.security import SECRET_KEY, ALGORITHM
+from ..schemas.auth import TokenPayload
+from ..models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -72,6 +73,10 @@ def get_repair_order_service(db: Database = Depends(get_db)):
 
 def get_repair_log_service(db: Database = Depends(get_db)):
     return RepairLogService(db)
+
+
+def get_feedback_service(db: Database = Depends(get_db)):
+    return FeedbackService(db)
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), user_service: UserService = Depends(get_user_service)):

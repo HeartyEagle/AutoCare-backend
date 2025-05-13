@@ -4,6 +4,9 @@ import uvicorn
 from contextlib import asynccontextmanager
 from .db.connection import Database
 from .api.auth import router as auth_router
+from .api.customer import router as customer_router
+from .api.staff import router as staff_router
+from .api.admin import router as admin_router
 
 
 @asynccontextmanager
@@ -40,7 +43,9 @@ app.add_middleware(
 
 # Include API routers (e.g., auth router)
 app.include_router(auth_router, prefix="/api")
-
+app.include_router(customer_router, prefix="/api")
+app.include_router(staff_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 # Optional: Add a root endpoint for testing
 
 
