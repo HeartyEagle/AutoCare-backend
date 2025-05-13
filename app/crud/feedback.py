@@ -59,8 +59,7 @@ class FeedbackService:
         rows = self.db.select_data(
             table_name="feedback",
             columns=["feedback_id", "customer_id", "log_id", "rating", "comments", "feedback_time"],
-            where="feedback_id = ?",
-            where_params=(feedback_id,),
+            where=f"feedback_id = {feedback_id}",
             limit=1
         )
         if not rows:

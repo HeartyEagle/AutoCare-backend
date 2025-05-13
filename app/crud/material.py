@@ -69,8 +69,7 @@ class MaterialService:
                 "material_id", "log_id", "name",
                 "quantity", "unit_price", "remarks", "created_at"
             ],
-            where="material_id = ?",
-            where_params=(material_id,)
+            where=f"material_id = {material_id}",
         )
         if not rows:
             return None
@@ -96,8 +95,7 @@ class MaterialService:
                 "material_id", "log_id", "name",
                 "quantity", "unit_price", "remarks", "created_at"
             ],
-            where="log_id = ?",
-            where_params=(log_id,),
+            where=f"log_id = {log_id}",
             order_by="material_id ASC"
         )
         return [
@@ -150,8 +148,7 @@ class MaterialService:
             self.db.update_data(
                 table_name="material",
                 data=data,
-                where="material_id = ?",
-                where_params=(material_id,)
+                where=f"material_id = {material_id}",
             )
             # 审计
             self.audit_log_service.log_audit_event(
@@ -177,8 +174,7 @@ class MaterialService:
         # 调用通用删除
         deleted = self.db.delete_data(
             table_name="material",
-            where="material_id = ?",
-            where_params=(material_id,)
+            where=f"material_id = {material_id}",
         )
         if deleted:
             self.audit_log_service.log_audit_event(

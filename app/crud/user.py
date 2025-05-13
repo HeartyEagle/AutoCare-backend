@@ -173,7 +173,7 @@ class UserService:
             "email": user.email,
             "address": user.address,
             "phone": user.phone
-        }, where="user_id = ?", where_params=user.user_id)
+        }, where=f"user_id = {user_id}")
         
         self.audit_log_service.log_audit_event(
             table_name="user",
@@ -197,8 +197,7 @@ class UserService:
             details = self.db.select_data(
                 table_name="staff",
                 columns=["jobtype", "hourly_rate"],
-                where="staff_id = ?",
-                where_params=(row[0],),
+                where=f"staff_id = {row[0]}",
                 limit=1
             )
             if details:

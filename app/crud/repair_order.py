@@ -72,8 +72,7 @@ class RepairOrderService:
                 "request_id", "required_staff_type",
                 "status", "order_time", "finish_time", "remarks"
             ],
-            where="order_id = ?", 
-            where_params=(order_id,)
+            where=f"order_id = {order_id}", 
         )
         if not rows:
             return None
@@ -101,8 +100,7 @@ class RepairOrderService:
                 "request_id", "required_staff_type",
                 "status", "order_time", "finish_time", "remarks"
             ],
-            where="customer_id = ?",
-            where_params=(customer_id,)
+            where=f"customer_id = {customer_id}",
         )
         return [
             RepairOrder(
@@ -131,8 +129,7 @@ class RepairOrderService:
                 "ro.finish_time", "ro.remarks", "ra.time_worked"
             ],
             joins=["INNER JOIN repair_assignment ra ON ro.order_id = ra.order_id"],
-            where="ra.staff_id = ?",
-            where_params=(staff_id,)
+            where=f"ra.staff_id = {staff_id}"
         )
         return [
             {
@@ -192,8 +189,7 @@ class RepairOrderService:
         self.db.update_data(
             table_name="repair_order",
             data={"status": status.value},
-            where="order_id = ?",
-            where_params=(order_id,)
+            where=f"order_id = {order_id}"
         )
         self.audit_log_service.log_audit_event(
             table_name="repair_order",
@@ -218,8 +214,7 @@ class RepairOrderService:
         self.db.update_data(
             table_name="repair_order",
             data={"finish_time": finish_time},
-            where="order_id = ?",
-            where_params=(order_id,)
+            where=f"order_id = {order_id}",
         )
         self.audit_log_service.log_audit_event(
             table_name="repair_order",
@@ -241,8 +236,7 @@ class RepairOrderService:
         # 调用 delete_data
         self.db.delete_data(
             table_name="repair_order",
-            where="order_id = ?",
-            where_params=(order_id,)
+            where=f"order_id = {order_id}",
         )
         self.audit_log_service.log_audit_event(
             table_name="repair_order",

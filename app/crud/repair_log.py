@@ -54,8 +54,7 @@ class RepairLogService:
         rows = self.db.select_data(
             table_name="repair_log",
             columns=["log_id", "order_id", "staff_id", "log_time", "log_message"],
-            where="log_id = ?",
-            where_params=(log_id,)
+            where=f"log_id = {log_id}",
         )
         if not rows:
             return None
@@ -76,8 +75,7 @@ class RepairLogService:
         rows = self.db.select_data(
             table_name="repair_log",
             columns=["log_id", "order_id", "staff_id", "log_time", "log_message"],
-            where="order_id = ?",
-            where_params=(order_id,),
+            where=f"order_id = {order_id}",
             order_by="log_time ASC"
         )
         return [

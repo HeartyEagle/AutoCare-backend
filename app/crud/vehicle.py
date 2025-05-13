@@ -76,8 +76,7 @@ class VehicleService:
                 "vehicle_id", "customer_id", "license_plate",
                 "brand", "model", "type", "color", "remarks", "created_at"
             ],
-            where="vehicle_id = ?",
-            where_params=(vehicle_id,)
+            where=f"vehicle_id = {vehicle_id}",
         )
         if not rows:
             return None
@@ -105,8 +104,7 @@ class VehicleService:
                 "vehicle_id", "customer_id", "license_plate",
                 "brand", "model", "type", "color", "remarks", "created_at"
             ],
-            where="customer_id = ?",
-            where_params=(customer_id,),
+            where=f"customer_id = {customer_id}",
             order_by="vehicle_id ASC"
         )
         return [
@@ -193,8 +191,7 @@ class VehicleService:
             self.db.update_data(
                 table_name="vehicle",
                 data=updates,
-                where="vehicle_id = ?",
-                where_params=(vehicle_id,)
+                where=f"vehicle_id = {vehicle_id}",
             )
             self.audit_log_service.log_audit_event(
                 table_name="vehicle",
@@ -217,8 +214,7 @@ class VehicleService:
 
         deleted = self.db.delete_data(
             table_name="vehicle",
-            where="vehicle_id = ?",
-            where_params=(vehicle_id,)
+            where=f"vehicle_id = {vehicle_id}",
         )
         if deleted:
             self.audit_log_service.log_audit_event(

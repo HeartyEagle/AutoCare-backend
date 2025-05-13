@@ -60,8 +60,7 @@ class RepairAssignmentService:
         rows = self.db.select_data(
             table_name="repair_assignment",
             columns=["assignment_id", "order_id", "staff_id", "time_worked"],
-            where="order_id = ? AND staff_id = ?",
-            where_params=(order_id, staff_id)
+            where=f"order_id = {order_id} AND staff_id = {staff_id}",
         )
         if not rows:
             return None
@@ -86,8 +85,7 @@ class RepairAssignmentService:
         rows = self.db.select_data(
             table_name="repair_assignment",
             columns=["assignment_id", "order_id", "staff_id", "time_worked"],
-            where="assignment_id = ?",
-            where_params=(assignment_id,)
+            where=f"assignment_id = {assignment_id}",
         )
         if not rows:
             return None
@@ -103,8 +101,7 @@ class RepairAssignmentService:
         self.db.update_data(
             table_name="repair_assignment",
             data={"time_worked": time_worked},
-            where="assignment_id = ?",
-            where_params=(assignment_id,)
+            where=f"assignment_id = {assignment_id}",
         )
 
         # 构造新的对象
@@ -133,8 +130,7 @@ class RepairAssignmentService:
         rows = self.db.select_data(
             table_name="repair_assignment",
             columns=["assignment_id", "order_id", "staff_id", "time_worked"],
-            where="assignment_id = ?",
-            where_params=(assignment_id,)
+            where=f"assignment_id = {assignment_id}",
         )
         if not rows:
             return False
@@ -149,8 +145,7 @@ class RepairAssignmentService:
         # 删除
         deleted = self.db.delete_data(
             table_name="repair_assignment",
-            where="assignment_id = ?",
-            where_params=(assignment_id,)
+            where=f"assignment_id = {assignment_id}",
         )
         if deleted:
             self.audit_log_service.log_audit_event(
