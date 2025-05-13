@@ -15,7 +15,8 @@ class UserService:
     def get_user_by_username(self, username: str) -> Optional[User]:
         rows = self.db.select_data(
             table_name="user",
-            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
+            columns=["user_id", "name", "username", "password",
+                     "phone", "email", "address", "discriminator"],
             where="username = ?",
             where_params=(username,),
             limit=1
@@ -25,7 +26,8 @@ class UserService:
     def get_user_by_id(self, user_id: int) -> Optional[User]:
         rows = self.db.select_data(
             table_name="user",
-            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
+            columns=["user_id", "name", "username", "password",
+                     "phone", "email", "address", "discriminator"],
             where="user_id = ?",
             where_params=(user_id,),
             limit=1
@@ -35,7 +37,8 @@ class UserService:
     def get_all_users(self) -> List[User]:
         rows = self.db.select_data(
             table_name="user",
-            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"]
+            columns=["user_id", "name", "username", "password",
+                     "phone", "email", "address", "discriminator"]
         )
         return [self._map_user_row_to_object(row) for row in rows]
 
@@ -75,13 +78,18 @@ class UserService:
             email=user.email,
             address=user.address
         )
+
         self.db.insert_data(
             table_name="user",
-            data=customer.asdict()
+            data={key: customer.asdict()[key] for key in customer.asdict(
+            ).keys() if key not in ["customer_id"]}
         )
         row = self.db.execute_query("SELECT LAST_INSERT_ID();")
         customer.user_id = int(row[0][0]) if row else None
         customer.customer_id = customer.user_id
+
+        self.db.insert_data(table_name='customer', data={
+                            "customer_id": customer.user_id})
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=customer.user_id,
@@ -138,7 +146,8 @@ class UserService:
         # Insert into staff details
         self.db.insert_data(
             table_name="staff",
-            data={"staff_id": staff.staff_id, "jobtype": staff.jobtype.value if staff.jobtype else None, "hourly_rate": staff.hourly_rate}
+            data={"staff_id": staff.staff_id, "jobtype": staff.jobtype.value if staff.jobtype else None,
+                  "hourly_rate": staff.hourly_rate}
         )
         self.audit_log_service.log_audit_event(
             table_name="user",
@@ -185,7 +194,8 @@ class UserService:
                 limit=1
             )
             if details:
-                base.update({"staff_id": row[0], "jobtype": StaffJobType(details[0][0]), "hourly_rate": details[0][1] or 0})
+                base.update({"staff_id": row[0], "jobtype": StaffJobType(
+                    details[0][0]), "hourly_rate": details[0][1] or 0})
             return Staff(**base)
         if disc == "customer":
             return Customer(**base)

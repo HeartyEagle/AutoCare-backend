@@ -19,50 +19,52 @@ class Database:
     conn: pyodbc.Connection = None
     driver_initialized: bool = False
     database_connected: bool = False
-    
+
     driver_not_initialized = Exception("Driver not initialized.")
     database_not_connected = Exception("Database not connected.")
-    
+
     def __init__(self, server: str, database: str, port: int, username: str, password: str) -> None:
-        self.server   = server
+        self.server = server
         self.database = database
-        self.port     = port
-        self.username = username 
+        self.port = port
+        self.username = username
         self.password = password
-        
+
     def set_driver(self, driver: str) -> None:
-        self.driver             = driver
+        self.driver = driver
+        self.driver_initialized = True
         self.database_connected = False
-        
+
     def connect(self) -> None:
         conn_str = f'''
         DRIVER={{{self.driver}}};SERVER={self.server};PORT={self.port};DATABASE={self.database};UID={self.username};PWD={self.password};CHARSET=utf8mb4;OPTION=3
         '''
+        print(conn_str)
         try:
-            conn                    = pyodbc.connect(conn_str)
-            cursor                  = conn.cursor()
-            self.cursor             = cursor
+            conn = pyodbc.connect(conn_str)
+            cursor = conn.cursor()
+            self.cursor = cursor
             self.database_connected = True
-            self.conn               = conn
+            self.conn = conn
         except Exception as e:
             raise Exception("Connection failed!", e)
-    
+
     def close(self) -> None:
         self.conn.close()
         self.database_connected = False
-        
+
     def _validation(self) -> bool:
         if not self.driver_initialized:
             raise self.driver_not_initialized
         if not self.database_connected:
             raise self.database_not_connected
-        
+
     def get_version(self) -> str:
         self._validation()
         self.cursor.execute("SELECT VERSION();")
         records = self.cursor.fetchall()
         return records[0][0]
-    
+
     def create_table(
         self,
         table_name: str,
@@ -72,14 +74,14 @@ class Database:
         if_not_exists: bool = True
     ) -> None:
         column_defs = [f"{col} {dtype}" for col, dtype in columns.items()]
-        
+
         if primary_key:
             pk = ", ".join(primary_key)
             column_defs.append(f"PRIMARY KEY ({pk})")
-        
+
         if foreign_keys:
             column_defs.extend(foreign_keys)
-        
+
         col_sql = ",\n  ".join(column_defs)
         query = f"CREATE TABLE {'IF NOT EXISTS ' if if_not_exists else ''}{table_name} (\n  {col_sql}\n);"
 
@@ -96,7 +98,6 @@ class Database:
         on_duplicate_update: bool = False,
         ignore_conflict: bool = True,
     ) -> None:
-        
         self._validation()
 
         if isinstance(data, dict):
@@ -106,16 +107,27 @@ class Database:
             return
 
         columns = list(data[0].keys())
-        placeholders = ", ".join(["%s"] * len(columns))
-        column_names = ", ".join(columns)
+        placeholders = ", ".join(["?"] * len(columns))
+        column_names = ", ".join(
+            [f"`{col}`" for col in columns])  # Escape column names
+        table_name_escaped = f"`{table_name}`"
 
         if on_duplicate_update:
-            update_clause = ", ".join([f"{col}=VALUES({col})" for col in columns])
-            query = f"INSERT INTO {table_name} ({column_names}) VALUES ({placeholders}) ON DUPLICATE KEY UPDATE {update_clause}"
+            update_clause = ", ".join(
+                [f"`{col}`=VALUES(`{col}`)" for col in columns]
+            )
+            query = (
+                f"INSERT INTO {table_name_escaped} ({column_names}) "
+                f"VALUES ({placeholders}) "
+                f"ON DUPLICATE KEY UPDATE {update_clause}"
+            )
         elif ignore_conflict:
-            query = f"INSERT IGNORE INTO {table_name} ({column_names}) VALUES ({placeholders})"
+            query = (
+                f"INSERT IGNORE INTO {table_name_escaped} ({column_names}) "
+                f"VALUES ({placeholders})"
+            )
         else:
-            query = f"INSERT INTO {table_name} ({column_names}) VALUES ({placeholders})"
+            query = f"INSERT INTO {table_name_escaped} ({column_names}) VALUES ({placeholders})"
 
         try:
             values = [tuple(row[col] for col in columns) for row in data]
@@ -123,7 +135,9 @@ class Database:
             self.conn.commit()
         except Exception as e:
             self.conn.rollback()
-            raise Exception(f"Data insertion failed: {e}\nQuery: {query}")
+            raise Exception(
+                f"Data insertion failed: {e}\nQuery: {query}\nValues: {values}"
+            )
 
     def select_data(
         self,
@@ -202,7 +216,8 @@ class Database:
                 continue
 
             if confirm:
-                user_input = input(f"⚠️ Are you sure you want to drop table '{table_name}'? Type 'yes' to confirm: ")
+                user_input = input(
+                    f"⚠️ Are you sure you want to drop table '{table_name}'? Type 'yes' to confirm: ")
                 if user_input.lower() != "yes":
                     print(f"Skipping table '{table_name}'")
                     continue
@@ -213,7 +228,7 @@ class Database:
                 print(f"Dropped table: {table_name}")
             except Exception as e:
                 raise Exception(f"Failed to drop table {table_name}: {e}")
-            
+
         def update_data(
             self,
             table_name: str,
@@ -221,7 +236,7 @@ class Database:
             where: str,
             where_params: Tuple[Any, ...] = ()
         ) -> int:
-            
+
             self._validation()
 
             columns = list(data.keys())
@@ -230,11 +245,12 @@ class Database:
             params = tuple(data[col] for col in columns) + where_params
 
             query = f"UPDATE {table_name} SET {set_clause} WHERE {where}"
-            with self.get_cursor() as cursor:
+            with self.cursor as cursor:
                 cursor.execute(query, params)
                 affected = cursor.rowcount
                 self.conn.commit()
-            logger.info(f"UPDATE 成功: {query} -- params={params}, affected={affected}")
+            logger.info(
+                f"UPDATE 成功: {query} -- params={params}, affected={affected}")
             return affected
 
         def delete_data(
@@ -246,13 +262,13 @@ class Database:
             self._validation()
 
             query = f"DELETE FROM {table_name} WHERE {where}"
-            with self.get_cursor() as cursor:
+            with self.cursor as cursor:
                 cursor.execute(query, where_params)
                 affected = cursor.rowcount
                 self.conn.commit()
-            logger.info(f"DELETE 成功: {query} -- params={where_params}, affected={affected}")
+            logger.info(
+                f"DELETE 成功: {query} -- params={where_params}, affected={affected}")
             return affected
- 
 
     def execute_query(self, query: str, params: Tuple[Any, ...] = ()) -> List[Any]:
         """
@@ -265,7 +281,7 @@ class Database:
         Raises:
             Exception: If query execution fails.
         """
-        with self.get_cursor() as cursor:
+        with self.cursor as cursor:
             try:
                 cursor.execute(query, params)
                 if query.strip().upper().startswith("SELECT"):
@@ -289,7 +305,7 @@ class Database:
         Raises:
             Exception: If statement execution fails.
         """
-        with self.get_cursor() as cursor:
+        with self.cursor as cursor:
             try:
                 cursor.execute(query, params)
                 self.conn.commit()

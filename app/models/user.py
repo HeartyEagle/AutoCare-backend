@@ -20,7 +20,7 @@ class User:
     def __repr__(self) -> str:
         """Representation of the User."""
         return f"<User {self.username}>"
-    
+
     def asdict(self):
         return asdict(self)
 
@@ -37,7 +37,7 @@ class Admin(User):
     def __repr__(self) -> str:
         """Representation of the Admin."""
         return f"<Admin {self.username}>"
-    
+
     def asdict(self):
         return asdict(self)
 
@@ -64,7 +64,7 @@ class Staff(User):
         if self.repair_assignments:
             return sum(assignment.time_worked for assignment in self.repair_assignments if assignment.time_worked is not None)
         return 0.0
-    
+
     def asdict(self):
         return asdict(self)
 
@@ -82,6 +82,6 @@ class Customer(User):
     def __repr__(self) -> str:
         """Representation of the Customer."""
         return f"<Customer {self.username}>"
-    
+
     def asdict(self):
         return asdict(self)
