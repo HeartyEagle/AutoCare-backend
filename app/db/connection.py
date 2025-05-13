@@ -17,15 +17,15 @@ class Database:
     conn: pyodbc.Connection = None
     driver_initialized: bool = False
     database_connected: bool = False
-    
+
     driver_not_initialized = Exception("Driver not initialized.")
     database_not_connected = Exception("Database not connected.")
-    
+
     def __init__(self, server: str, database: str, port: int, username: str, password: str) -> None:
-        self.server   = server
+        self.server = server
         self.database = database
-        self.port     = port
-        self.username = username 
+        self.port = port
+        self.username = username
         self.password = password
         
     def _normalize_string(self, value: Any) -> Any:
@@ -46,17 +46,18 @@ class Database:
         self.driver             = driver
         self.driver_initialized = True
         self.database_connected = False
-        
+
     def connect(self) -> None:
         conn_str = f'''
         DRIVER={{{self.driver}}};SERVER={self.server};PORT={self.port};DATABASE={self.database};UID={self.username};PWD={self.password};CHARSET=utf8mb4;OPTION=3
         '''
+        print(conn_str)
         try:
             self.conn               = pyodbc.connect(conn_str)
             self.database_connected = True
         except Exception as e:
             raise Exception("Connection failed!", e)
-    
+
     def close(self) -> None:
         if self.conn:
             self.conn.close()
@@ -67,7 +68,7 @@ class Database:
             raise self.driver_not_initialized
         if not self.database_connected:
             raise self.database_not_connected
-        
+
     def get_version(self) -> str:
         self._validation()
         with self.conn.cursor() as cursor:
@@ -85,14 +86,14 @@ class Database:
     ) -> None:
         self._validation()
         column_defs = [f"{col} {dtype}" for col, dtype in columns.items()]
-        
+
         if primary_key:
             pk = ", ".join(primary_key)
             column_defs.append(f"PRIMARY KEY ({pk})")
-        
+
         if foreign_keys:
             column_defs.extend(foreign_keys)
-        
+
         col_sql = ",\n  ".join(column_defs)
         query = f"CREATE TABLE {'IF NOT EXISTS ' if if_not_exists else ''}{table_name} (\n  {col_sql}\n);"
 
@@ -141,7 +142,9 @@ class Database:
                 self.conn.commit()
         except Exception as e:
             self.conn.rollback()
-            raise Exception(f"Data insertion failed: {e}\nQuery: {query}")
+            raise Exception(
+                f"Data insertion failed: {e}\nQuery: {query}\nValues: {values}"
+            )
 
     def select_data(
         self,

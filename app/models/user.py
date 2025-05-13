@@ -20,7 +20,7 @@ class User:
     def __repr__(self) -> str:
         """Representation of the User."""
         return f"<User {self.username}>"
-    
+
     def asdict(self):
         return asdict(self)
 

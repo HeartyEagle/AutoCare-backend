@@ -8,13 +8,8 @@ from .api.customer import router as customer_router
 from .api.staff import router as staff_router
 from .api.admin import router as admin_router
 import os
+from dotenv import load_dotenv
 
-SERVER = os.environ.get("SERVER")
-DATABASE = os.environ.get("DATABASE")
-USERNAME = os.environ.get("USERNAME")
-PASSWORD = os.environ.get("PASSWORD")
-DRIVER = os.environ.get("DRIVER")
-PORT = int(os.environ.get("PORT"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,7 +19,18 @@ async def lifespan(app: FastAPI):
     Uses synchronous operations for database connection management.
     """
     # Startup: Initialize database connection synchronously
-    app.state.db = Database(SERVER, DATABASE, PORT, USERNAME, PASSWORD)  # Store database instance in app.state for access in routes
+    # Store database instance in app.state for access in routes
+    load_dotenv()
+    SERVER = os.getenv("SERVER")
+    DATABASE = os.getenv("DATABASE")
+    USERNAME = os.getenv("USERNAME_")
+    PASSWORD = os.getenv("PASSWORD")
+    DRIVER = os.getenv("DRIVER")
+    PORT = int(os.getenv("PORT"))
+
+    print(DRIVER)
+
+    app.state.db = Database(SERVER, DATABASE, PORT, USERNAME, PASSWORD)
     app.state.db.set_driver(DRIVER)
     try:
         app.state.db.connect()  # Test connection on startup (synchronous)

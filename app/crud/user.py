@@ -34,7 +34,8 @@ class UserService:
     def get_all_users(self) -> List[User]:
         rows = self.db.select_data(
             table_name="user",
-            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"]
+            columns=["user_id", "name", "username", "password",
+                     "phone", "email", "address", "discriminator"]
         )
         return [self._map_user_row_to_object(row) for row in rows]
 
@@ -151,7 +152,8 @@ class UserService:
         # Insert into staff details
         self.db.insert_data(
             table_name="staff",
-            data={"staff_id": staff.staff_id, "jobtype": staff.jobtype.value if staff.jobtype else None, "hourly_rate": staff.hourly_rate}
+            data={"staff_id": staff.staff_id, "jobtype": staff.jobtype.value if staff.jobtype else None,
+                  "hourly_rate": staff.hourly_rate}
         )
         self.audit_log_service.log_audit_event(
             table_name="user",
@@ -201,7 +203,8 @@ class UserService:
                 limit=1
             )
             if details:
-                base.update({"staff_id": row[0], "jobtype": StaffJobType(details[0][0]), "hourly_rate": details[0][1] or 0})
+                base.update({"staff_id": row[0], "jobtype": StaffJobType(
+                    details[0][0]), "hourly_rate": details[0][1] or 0})
             return Staff(**base)
         if disc == "customer":
             return Customer(**base)
