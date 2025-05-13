@@ -56,7 +56,8 @@ def login(
     return {
         "status": "success",
         "access_token": access_token,
-        "token_type": "bearer"
+        "token_type": "bearer",
+        "user_id": user.user_id
     }
 
 

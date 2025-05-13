@@ -14,7 +14,6 @@ class Database:
     username: str = None
     password: str = None
     driver: str = None
-    cursor: pyodbc.Cursor = None
     conn: pyodbc.Connection = None
     driver_initialized: bool = False
     database_connected: bool = False
@@ -53,19 +52,17 @@ class Database:
         DRIVER={{{self.driver}}};SERVER={self.server};PORT={self.port};DATABASE={self.database};UID={self.username};PWD={self.password};CHARSET=utf8mb4;OPTION=3
         '''
         try:
-            conn                    = pyodbc.connect(conn_str)
-            cursor                  = conn.cursor()
-            self.cursor             = cursor
+            self.conn               = pyodbc.connect(conn_str)
             self.database_connected = True
-            self.conn               = conn
         except Exception as e:
             raise Exception("Connection failed!", e)
     
     def close(self) -> None:
-        self.conn.close()
+        if self.conn:
+            self.conn.close()
         self.database_connected = False
         
-    def _validation(self) -> bool:
+    def _validation(self) -> None:
         if not self.driver_initialized:
             raise self.driver_not_initialized
         if not self.database_connected:
@@ -73,9 +70,10 @@ class Database:
         
     def get_version(self) -> str:
         self._validation()
-        self.cursor.execute("SELECT VERSION();")
-        records = self.cursor.fetchall()
-        return records[0][0]
+        with self.conn.cursor() as cursor:
+            cursor.execute("SELECT VERSION();")
+            record = cursor.fetchone()
+        return record[0]
     
     def create_table(
         self,
@@ -85,6 +83,7 @@ class Database:
         primary_key: list = None,
         if_not_exists: bool = True
     ) -> None:
+        self._validation()
         column_defs = [f"{col} {dtype}" for col, dtype in columns.items()]
         
         if primary_key:
@@ -98,8 +97,9 @@ class Database:
         query = f"CREATE TABLE {'IF NOT EXISTS ' if if_not_exists else ''}{table_name} (\n  {col_sql}\n);"
 
         try:
-            self.cursor.execute(query)
-            self.conn.commit()
+            with self.conn.cursor() as cursor:
+                cursor.execute(query)
+                self.conn.commit()
         except Exception as e:
             raise Exception(f"Table creation failed: {e}\nQuery: {query}")
 
@@ -112,11 +112,9 @@ class Database:
     ) -> None:
         self._validation()
 
-        data = {key: data[key] for key in data.keys() if not (type(data[key]) == type(None))}
-
+        data = {key: data[key] for key in data.keys() if data[key] is not None}
         if isinstance(data, dict):
             data = [data]
-
         if not data:
             return
 
@@ -125,12 +123,8 @@ class Database:
 
         values_list = []
         for row in data:
-            values = []
-            for col in columns:
-                value = row[col]
-                values.append(self._format_value(value))
+            values = [self._format_value(row[col]) for col in columns]
             values_list.append(f"({', '.join(values)})")
-
         values_sql = ", ".join(values_list)
 
         if on_duplicate_update:
@@ -142,9 +136,9 @@ class Database:
             query = f"INSERT INTO {table_name} ({column_names}) VALUES {values_sql}"
 
         try:
-            print(query)
-            self.cursor.execute(query)
-            self.conn.commit()
+            with self.conn.cursor() as cursor:
+                cursor.execute(query)
+                self.conn.commit()
         except Exception as e:
             self.conn.rollback()
             raise Exception(f"Data insertion failed: {e}\nQuery: {query}")
@@ -164,60 +158,47 @@ class Database:
         joins: list[str] = None,
         as_dict: bool = False
     ):
+        from contextlib import closing
         self._validation()
-
         columns_sql = ", ".join(columns) if columns else "*"
         select_clause = f"SELECT {'DISTINCT ' if distinct else ''}{columns_sql}"
         query = f"{select_clause} FROM {table_name}"
+        
+        print(where, where_params)
 
         if joins:
             for join in joins:
                 query += f" {join}"
-
         if where and where_params:
             query += f" WHERE {self._format_where_clause(where, where_params)}"
         elif where:
             query += f" WHERE {where}"
-
         if group_by:
             query += f" GROUP BY {group_by}"
-
         if having:
             query += f" HAVING {having}"
-
         if order_by:
             query += f" ORDER BY {order_by}"
-
         if limit is not None:
-            query += f" LIMIT {limit}"
-            if offset is not None:
-                query += f" OFFSET {offset}"
+            query += f" LIMIT {limit}" + (f" OFFSET {offset}" if offset is not None else "")
 
+        print(f"Executing query: {query}")  # Debug
         try:
-            if as_dict:
-                import pymysql
-                if isinstance(self.cursor, pymysql.cursors.Cursor):
-                    self.cursor = self.conn.cursor(pymysql.cursors.DictCursor)
+            # 每次使用新的游标，并确保关闭
+            with closing(self.conn.cursor()) as cursor:
+                cursor.execute(query)
+                results = cursor.fetchall()
 
-            print(query)
-            self.cursor.execute(query)
-            results = self.cursor.fetchall()
-            # return self.cursor.fetchall()
-            normalized_results = []
+            normalized = []
             for row in results:
                 if as_dict:
-                    # 如果结果是字典
-                    normalized_row = {
-                        key: self._normalize_string(value) for key, value in row.items()
-                    }
+                    # 如果 as_dict，需要转换字典形式，可根据需要自行实现
+                    normalized.append({k: self._normalize_string(v) for k, v in row.items()})
                 else:
-                    # 如果结果是元组
-                    normalized_row = tuple(self._normalize_string(value) for value in row)
-                normalized_results.append(normalized_row)
-
-            return normalized_results
+                    normalized.append(tuple(self._normalize_string(v) for v in row))
+            return normalized
         except Exception as e:
-            raise Exception(f"Data selection failed: {e}\nQuery: {query}")
+            raise Exception(f"Data selection failed: {e}Query: {query}")
 
     def drop_table(
         self,
@@ -228,32 +209,25 @@ class Database:
         confirm: bool = True
     ) -> None:
         self._validation()
-
-        if isinstance(table_names, str):
-            table_names = [table_names]
-
-        for table_name in table_names:
-            query = f"DROP TABLE {'IF EXISTS ' if if_exists else ''}{table_name}"
-            if cascade:
-                query += " CASCADE"
-
+        names = [table_names] if isinstance(table_names, str) else table_names
+        for name in names:
+            query = f"DROP TABLE {'IF EXISTS ' if if_exists else ''}{name}" + (" CASCADE" if cascade else "")
             if dry_run:
                 print(f"[DRY RUN] Would execute: {query}")
                 continue
-
             if confirm:
-                user_input = input(f"⚠️ Are you sure you want to drop table '{table_name}'? Type 'yes' to confirm: ")
-                if user_input.lower() != "yes":
-                    print(f"Skipping table '{table_name}'")
+                ans = input(f"⚠️ Drop table '{name}'? Type 'yes' to confirm: ")
+                if ans.lower() != 'yes':
+                    print(f"Skipping {name}")
                     continue
-
             try:
-                self.cursor.execute(query)
-                self.conn.commit()
-                print(f"Dropped table: {table_name}")
+                with self.conn.cursor() as cursor:
+                    cursor.execute(query)
+                    self.conn.commit()
+                print(f"Dropped table: {name}")
             except Exception as e:
-                raise Exception(f"Failed to drop table {table_name}: {e}")
-            
+                raise Exception(f"Failed to drop table {name}: {e}")
+
     def update_data(
         self,
         table_name: str,
@@ -262,19 +236,20 @@ class Database:
         where_params: Tuple[Any, ...] = ()
     ) -> int:
         self._validation()
-
-        columns = list(data.keys())
-        set_clause = ", ".join(f"{col} = {self._format_value(data[col])}" for col in columns)
-
+        cols = data.keys()
+        set_clause = ", ".join(f"{c} = " + self._format_value(data[c]) for c in cols)
         where_clause = self._format_where_clause(where, where_params) if where_params else where
-
         query = f"UPDATE {table_name} SET {set_clause} WHERE {where_clause}"
-        with self.cursor as cursor:
-            cursor.execute(query)
-            affected = cursor.rowcount
-            self.conn.commit()
-        logger.info(f"UPDATE 成功: {query}, affected={affected}")
-        return affected
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(query)
+                affected = cursor.rowcount
+                self.conn.commit()
+            logger.info(f"UPDATE 成功: {query}, affected={affected}")
+            return affected
+        except Exception as e:
+            self.conn.rollback()
+            raise Exception(f"Update failed: {e}\nQuery: {query}")
 
     def delete_data(
         self,
@@ -283,44 +258,47 @@ class Database:
         where_params: Tuple[Any, ...] = ()
     ) -> int:
         self._validation()
-
         where_clause = self._format_where_clause(where, where_params) if where_params else where
-
         query = f"DELETE FROM {table_name} WHERE {where_clause}"
-        with self.cursor as cursor:
-            cursor.execute(query)
-            affected = cursor.rowcount
-            self.conn.commit()
-        logger.info(f"DELETE 成功: {query}, affected={affected}")
-        return affected
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(query)
+                affected = cursor.rowcount
+                self.conn.commit()
+            logger.info(f"DELETE 成功: {query}, affected={affected}")
+            return affected
+        except Exception as e:
+            self.conn.rollback()
+            raise Exception(f"Delete failed: {e}\nQuery: {query}")
 
     def execute_query(self, query: str, params: Tuple[Any, ...] = ()) -> List[Any]:
-        formatted_query = self._format_query(query, params) if params else query
-        with self.cursor as cursor:
-            try:
-                cursor.execute(formatted_query)
-                if query.strip().upper().startswith("SELECT"):
-                    rows = cursor.fetchall()
-                    return rows
+        self._validation()
+        formatted = self._format_query(query, params) if params else query
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(formatted)
+                if formatted.strip().upper().startswith("SELECT"):
+                    return cursor.fetchall()
                 else:
                     self.conn.commit()
                     return []
-            except pyodbc.Error as e:
-                self.conn.rollback()
-                logger.error(f"Query execution failed: {str(e)}\nQuery: {formatted_query}")
-                raise Exception(f"Query execution failed: {str(e)}")
+        except pyodbc.Error as e:
+            self.conn.rollback()
+            logger.error(f"Query execution failed: {e}\nQuery: {formatted}")
+            raise
 
     def execute_non_query(self, query: str, params: Tuple[Any, ...] = ()) -> None:
-        formatted_query = self._format_query(query, params) if params else query
-        with self.cursor as cursor:
-            try:
-                cursor.execute(formatted_query)
+        self._validation()
+        formatted = self._format_query(query, params) if params else query
+        try:
+            with self.conn.cursor() as cursor:
+                cursor.execute(formatted)
                 self.conn.commit()
-                logger.info(f"Non-query executed successfully: {formatted_query}")
-            except pyodbc.Error as e:
-                self.conn.rollback()
-                logger.error(f"Non-query execution failed: {str(e)}\nQuery: {formatted_query}")
-                raise Exception(f"Non-query execution failed: {str(e)}")
+            logger.info(f"Non-query executed successfully: {formatted}")
+        except pyodbc.Error as e:
+            self.conn.rollback()
+            logger.error(f"Non-query execution failed: {e}\nQuery: {formatted}")
+            raise
 
     def init_db(self):
         create_users_table = """
@@ -336,35 +314,19 @@ class Database:
             self.execute_query(create_users_table)
             logger.info("Database schema initialized.")
         except Exception as e:
-            logger.error(f"Failed to initialize database schema: {str(e)}")
+            logger.error(f"Failed to initialize database schema: {e}")
             raise
 
     def _format_value(self, value: Any) -> str:
         if isinstance(value, str):
             return f"'{value}'"
-        elif value is None:
-            return "NULL"
-        else:
-            return str(value)
+        return "NULL" if value is None else str(value)
 
     def _format_where_clause(self, where: str, params: Tuple[Any, ...]) -> str:
-        if not params:
-            return where
         parts = where.split("?")
         if len(parts) != len(params) + 1:
             raise ValueError("Number of placeholders does not match number of parameters.")
-        formatted = parts[0]
-        for i, param in enumerate(params):
-            formatted += self._format_value(param) + parts[i + 1]
-        return formatted
+        return ''.join(p + (f"'{v}'" if isinstance(v, str) else "NULL" if v is None else str(v)) for p, v in zip(parts, params + ('',)))
 
     def _format_query(self, query: str, params: Tuple[Any, ...]) -> str:
-        if not params:
-            return query
-        parts = query.split("?")
-        if len(parts) != len(params) + 1:
-            raise ValueError("Number of placeholders does not match number of parameters.")
-        formatted = parts[0]
-        for i, param in enumerate(params):
-            formatted += self._format_value(param) + parts[i + 1]
-        return formatted
+        return self._format_where_clause(query, params)

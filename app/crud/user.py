@@ -15,19 +15,18 @@ class UserService:
         rows = self.db.select_data(
             table_name="user",
             columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
-            where="username = ?",
-            where_params=(username,),
+            where=f"username = '{username}'",
             limit=1
         )
         print(rows)
         return self._map_user_row_to_object(rows[0]) if rows else None
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
+        print(type(user_id))
         rows = self.db.select_data(
             table_name="user",
             columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
-            where="user_id = ?",
-            where_params=(user_id,),
+            where=f"user_id = {user_id}",
             limit=1
         )
         return self._map_user_row_to_object(rows[0]) if rows else None
