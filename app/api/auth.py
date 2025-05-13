@@ -81,13 +81,16 @@ def verify_token(
     try:
         # Decode the token using the same SECRET_KEY and ALGORITHM
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
-        if not username:
+        id: str = payload.get("sub")
+        if not id:
+            print("not username")
             return unauth_response
     except JWTError:
+        print("JWTError")
         return unauth_response
-    user = user_service.get_user_by_username(username)
+    user = user_service.get_user_by_id(id)
     if user is None:
+        print("user is None")
         return unauth_response
     return {"status": "success"}
 
