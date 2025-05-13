@@ -35,3 +35,4 @@ class AuditLogService:
             (audit_log.table_name, audit_log.record_id, audit_log.operation.value,
              audit_log.old_data, audit_log.new_data)
         )
+        

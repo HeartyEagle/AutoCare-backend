@@ -7,7 +7,14 @@ from .api.auth import router as auth_router
 from .api.customer import router as customer_router
 from .api.staff import router as staff_router
 from .api.admin import router as admin_router
+import os
 
+SERVER = os.environ.get("SERVER")
+DATABASE = os.environ.get("DATABASE")
+USERNAME = os.environ.get("USERNAME")
+PASSWORD = os.environ.get("PASSWORD")
+DRIVER = os.environ.get("DRIVER")
+PORT = int(os.environ.get("PORT"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -17,9 +24,11 @@ async def lifespan(app: FastAPI):
     Uses synchronous operations for database connection management.
     """
     # Startup: Initialize database connection synchronously
-    app.state.db = Database()  # Store database instance in app.state for access in routes
+    app.state.db = Database(SERVER, DATABASE, PORT, USERNAME, PASSWORD)  # Store database instance in app.state for access in routes
+    app.state.db.set_driver(DRIVER)
     try:
         app.state.db.connect()  # Test connection on startup (synchronous)
+        print(f"The current MySQL version is {app.state.db.get_version()}")
     except Exception as e:
         raise Exception(f"Failed to initialize database connection: {str(e)}")
 
