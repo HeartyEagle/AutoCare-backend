@@ -32,6 +32,7 @@ class Database:
         
     def set_driver(self, driver: str) -> None:
         self.driver             = driver
+        self.driver_initialized = True
         self.database_connected = False
         
     def connect(self) -> None:
