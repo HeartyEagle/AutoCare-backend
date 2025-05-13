@@ -23,20 +23,6 @@ class Database:
     driver_not_initialized = Exception("Driver not initialized.")
     database_not_connected = Exception("Database not connected.")
     
-    # def __init__(self):
-    #     """
-    #     Initialize the Database class with connection string for MySQL using pyodbc.
-    #     """
-    #     self.conn_str = (
-    #         "DRIVER={MySQL ODBC 9.2 ANSI Driver};"
-    #         "SERVER=localhost;"
-    #         "PORT=3308;"
-    #         "DATABASE=autocare_db;"
-    #         "UID=macrohard;"
-    #         "PWD=M@cr0h@rd!2025$;"
-    #     )
-    #     self.conn = None
-    
     def __init__(self, server: str, database: str, port: int, username: str, password: str) -> None:
         self.server   = server
         self.database = database
@@ -227,6 +213,45 @@ class Database:
                 print(f"Dropped table: {table_name}")
             except Exception as e:
                 raise Exception(f"Failed to drop table {table_name}: {e}")
+            
+        def update_data(
+            self,
+            table_name: str,
+            data: dict[str, Any],
+            where: str,
+            where_params: Tuple[Any, ...] = ()
+        ) -> int:
+            
+            self._validation()
+
+            columns = list(data.keys())
+            set_clause = ", ".join(f"{col} = ?" for col in columns)
+
+            params = tuple(data[col] for col in columns) + where_params
+
+            query = f"UPDATE {table_name} SET {set_clause} WHERE {where}"
+            with self.get_cursor() as cursor:
+                cursor.execute(query, params)
+                affected = cursor.rowcount
+                self.conn.commit()
+            logger.info(f"UPDATE 成功: {query} -- params={params}, affected={affected}")
+            return affected
+
+        def delete_data(
+            self,
+            table_name: str,
+            where: str,
+            where_params: Tuple[Any, ...] = ()
+        ) -> int:
+            self._validation()
+
+            query = f"DELETE FROM {table_name} WHERE {where}"
+            with self.get_cursor() as cursor:
+                cursor.execute(query, where_params)
+                affected = cursor.rowcount
+                self.conn.commit()
+            logger.info(f"DELETE 成功: {query} -- params={where_params}, affected={affected}")
+            return affected
  
 
     def execute_query(self, query: str, params: Tuple[Any, ...] = ()) -> List[Any]:

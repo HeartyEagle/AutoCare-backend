@@ -1,5 +1,5 @@
 # models/repair_models.py
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Optional, List
 from datetime import datetime
 from .enums import RepairStatus, StaffJobType
@@ -13,6 +13,9 @@ class RepairRequest:
     customer_id: int = 0  # Foreign key to customer
     description: str = ""
     request_time: Optional[datetime] = None
+    
+    def asdict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -29,6 +32,10 @@ class RepairAssignment:
         if self.time_worked and self.staff and hasattr(self.staff, 'hourly_rate'):
             return self.time_worked * self.staff.hourly_rate
         return 0.0
+    
+    
+    def asdict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -56,6 +63,10 @@ class RepairOrder:
         if self.status == RepairStatus.COMPLETED and self.repair_assignments:
             return sum(assignment.assignment_fee for assignment in self.repair_assignments if assignment.assignment_fee)
         return 0.0
+    
+    
+    def asdict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -72,6 +83,10 @@ class RepairLog:
         if self.materials:
             return sum(material.total_price for material in self.materials if material.total_price)
         return 0.0
+    
+    
+    def asdict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -87,3 +102,7 @@ class Material:
     def total_price(self) -> float:
         """Calculate total price as quantity * unit_price."""
         return self.quantity * self.unit_price
+    
+    
+    def asdict(self):
+        return asdict(self)

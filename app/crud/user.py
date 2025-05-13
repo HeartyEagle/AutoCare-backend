@@ -13,71 +13,43 @@ class UserService:
         self.audit_log_service = AuditLogService(db)
 
     def get_user_by_username(self, username: str) -> Optional[User]:
-        """
-        Get a user by username.
-        Args:
-            username (str): Username of the user.
-        Returns:
-            Optional[User]: User object if found, otherwise None.
-        """
-        select_query = """
-            SELECT user_id, name, username, password, phone, email, address, discriminator
-            FROM user
-            WHERE username = ?
-        """
-        rows = self.db.execute_query(select_query, (username,))
-        if rows:
-            return self._map_user_row_to_object(rows[0])
-        return None
+        rows = self.db.select_data(
+            table_name="user",
+            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
+            where="username = ?",
+            where_params=(username,),
+            limit=1
+        )
+        return self._map_user_row_to_object(rows[0]) if rows else None
 
     def get_user_by_id(self, user_id: int) -> Optional[User]:
-        """
-        Get a user by ID.
-        Args:
-            user_id (int): ID of the user.
-        Returns:
-            Optional[User]: User object if found, otherwise None.
-        """
-        select_query = """
-            SELECT user_id, name, username, password, phone, email, address, discriminator
-            FROM user
-            WHERE user_id = ?
-        """
-        rows = self.db.execute_query(select_query, (user_id,))
-        if rows:
-            return self._map_user_row_to_object(rows[0])
-        return None
+        rows = self.db.select_data(
+            table_name="user",
+            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
+            where="user_id = ?",
+            where_params=(user_id,),
+            limit=1
+        )
+        return self._map_user_row_to_object(rows[0]) if rows else None
 
     def get_all_users(self) -> List[User]:
-        """
-        Get all users (customers, staff, admins).
-        Returns:
-            List[User]: List of all user objects.
-        """
-        select_query = """
-            SELECT user_id, name, username, password, phone, email, address, discriminator
-            FROM user
-        """
-        rows = self.db.execute_query(select_query)
+        rows = self.db.select_data(
+            table_name="user",
+            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"]
+        )
         return [self._map_user_row_to_object(row) for row in rows]
 
     def get_all_staff(self) -> List[Staff]:
-        """
-        Get all staff members.
-        Returns:
-            List[Staff]: List of all staff member objects.
-        """
-        select_query = """
-            SELECT u.user_id, u.name, u.username, u.password, u.phone, u.email, u.address, u.discriminator,
-                   s.jobtype, s.hourly_rate
-            FROM user u
-            INNER JOIN staff s ON u.user_id = s.staff_id
-            WHERE u.discriminator = 'staff'
-        """
-        rows = self.db.execute_query(select_query)
-        staff_members = []
+        rows = self.db.select_data(
+            table_name="user u",
+            columns=["u.user_id", "u.name", "u.username", "u.password", "u.phone", "u.email", "u.address", "u.discriminator",
+                     "s.jobtype", "s.hourly_rate"],
+            joins=["INNER JOIN staff s ON u.user_id = s.staff_id"],
+            where="u.discriminator = 'staff'"
+        )
+        staff_list: List[Staff] = []
         for row in rows:
-            user_data = {
+            data = {
                 "user_id": row[0],
                 "name": row[1],
                 "username": row[2],
@@ -88,42 +60,28 @@ class UserService:
                 "discriminator": row[7],
                 "staff_id": row[0],
                 "jobtype": StaffJobType(row[8]) if row[8] else None,
-                "hourly_rate": row[9] if row[9] else 0
+                "hourly_rate": row[9] or 0
             }
-            staff_members.append(Staff(**user_data))
-        return staff_members
+            staff_list.append(Staff(**data))
+        return staff_list
 
     def create_customer(self, user: UserCreate) -> Customer:
-        """
-        Create a customer with a hashed password.
-        Args:
-            user (UserCreate): User creation schema with user details.
-        Returns:
-            Customer: Created customer object.
-        """
-        hashed_password = get_password_hash(user.password)
+        hashed = get_password_hash(user.password)
         customer = Customer(
             name=user.name,
             username=user.username,
-            password=hashed_password,
+            password=hashed,
             phone=user.phone,
             email=user.email,
             address=user.address
         )
-        insert_query = """
-            INSERT INTO user (name, username, password, phone, email, address, discriminator)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-        self.db.execute_non_query(
-            insert_query,
-            (customer.name, customer.username, customer.password, customer.phone,
-             customer.email, customer.address, customer.discriminator)
+        self.db.insert_data(
+            table_name="user",
+            data=customer.asdict()
         )
-        select_id_query = "SELECT @@IDENTITY AS id"
-        user_id_row = self.db.execute_query(select_id_query)
-        user_id = int(user_id_row[0][0]) if user_id_row else None
-        customer.user_id = user_id
-        customer.customer_id = user_id  # Assuming customer_id is the same as user_id
+        row = self.db.execute_query("SELECT LAST_INSERT_ID();")
+        customer.user_id = int(row[0][0]) if row else None
+        customer.customer_id = customer.user_id
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=customer.user_id,
@@ -133,36 +91,22 @@ class UserService:
         return customer
 
     def create_admin(self, user: UserCreate) -> Admin:
-        """
-        Create an admin with a hashed password.
-        Args:
-            user (UserCreate): User creation schema with user details.
-        Returns:
-            Admin: Created admin object.
-        """
-        hashed_password = get_password_hash(user.password)
+        hashed = get_password_hash(user.password)
         admin = Admin(
             name=user.name,
             username=user.username,
-            password=hashed_password,
+            password=hashed,
             phone=user.phone,
             email=user.email,
             address=user.address
-        )  # discriminator is set to "admin" in Admin's __init__
-        insert_query = """
-            INSERT INTO user (name, username, password, phone, email, address, discriminator)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-        self.db.execute_non_query(
-            insert_query,
-            (admin.name, admin.username, admin.password, admin.phone,
-             admin.email, admin.address, admin.discriminator)
         )
-        select_id_query = "SELECT @@IDENTITY AS id"
-        user_id_row = self.db.execute_query(select_id_query)
-        user_id = int(user_id_row[0][0]) if user_id_row else None
-        admin.user_id = user_id
-        admin.admin_id = user_id  # Assuming admin_id is the same as user_id
+        self.db.insert_data(
+            table_name="user",
+            data=admin.asdict()
+        )
+        row = self.db.execute_query("SELECT LAST_INSERT_ID();")
+        admin.user_id = int(row[0][0]) if row else None
+        admin.admin_id = admin.user_id
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=admin.user_id,
@@ -172,48 +116,29 @@ class UserService:
         return admin
 
     def create_staff(self, user: StaffCreate) -> Staff:
-        """
-        Create a staff member with a hashed password.
-        Args:
-            user (StaffCreate): User creation schema with user details.
-        Returns:
-            Staff: Created staff object.
-        """
-        hashed_password = get_password_hash(user.password)
+        hashed = get_password_hash(user.password)
         staff = Staff(
             name=user.name,
             username=user.username,
-            password=hashed_password,
+            password=hashed,
             phone=user.phone,
             email=user.email,
             address=user.address,
             jobtype=user.jobtype,
             hourly_rate=user.hourly_rate
-        )  # discriminator is set to "staff" in Staff's __init__
-        # Insert into user table
-        insert_user_query = """
-            INSERT INTO user (name, username, password, phone, email, address, discriminator)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """
-        self.db.execute_non_query(
-            insert_user_query,
-            (staff.name, staff.username, staff.password, staff.phone,
-             staff.email, staff.address, staff.discriminator)
         )
-        select_id_query = "SELECT @@IDENTITY AS id"
-        user_id_row = self.db.execute_query(select_id_query)
-        user_id = int(user_id_row[0][0]) if user_id_row else None
-        staff.user_id = user_id
-        staff.staff_id = user_id  # Assuming staff_id is the same as user_id
-        # Insert into staff table for additional fields
-        insert_staff_query = """
-            INSERT INTO staff (staff_id, jobtype, hourly_rate)
-            VALUES (?, ?, ?)
-        """
-        self.db.execute_non_query(
-            insert_staff_query,
-            (staff.staff_id, staff.jobtype.value if staff.jobtype else None,
-             staff.hourly_rate)
+        # Insert into user table
+        self.db.insert_data(
+            table_name="user",
+            data=staff.asdict()
+        )
+        row = self.db.execute_query("SELECT LAST_INSERT_ID();")
+        staff.user_id = int(row[0][0]) if row else None
+        staff.staff_id = staff.user_id
+        # Insert into staff details
+        self.db.insert_data(
+            table_name="staff",
+            data={"staff_id": staff.staff_id, "jobtype": staff.jobtype.value if staff.jobtype else None, "hourly_rate": staff.hourly_rate}
         )
         self.audit_log_service.log_audit_event(
             table_name="user",
@@ -224,90 +149,59 @@ class UserService:
         return staff
 
     def update_user_info(self, user_id: int, name: str, email: str, address: str, phone: str) -> Optional[User]:
-        """
-        Update user information.
-        Args:
-            user_id (int): ID of the user to update.
-            name (str): New name of the user.
-            email (str): New email of the user.
-            address (str): New address of the user.
-            phone (str): New phone number of the user.
-        Returns:
-            Optional[User]: Updated user object if found, otherwise None.
-        """
         user = self.get_user_by_id(user_id)
-        if user:
-            old_data = self._object_to_dict(user)
-            user.name = name
-            user.email = email
-            user.address = address
-            user.phone = phone
-            update_query = """
-                UPDATE user
-                SET name = ?, email = ?, address = ?, phone = ?
-                WHERE user_id = ?
-            """
-            self.db.execute_non_query(
-                update_query,
-                (user.name, user.email, user.address, user.phone, user_id)
-            )
-            self.audit_log_service.log_audit_event(
-                table_name="user",
-                record_id=user_id,
-                operation=OperationType.UPDATE,
-                old_data=old_data,
-                new_data=self._object_to_dict(user)
-            )
+        if not user:
+            return None
+        old = self._object_to_dict(user)
+        user.name, user.email, user.address, user.phone = name, email, address, phone
+        self.db.execute_non_query(
+            "UPDATE user SET name = ?, email = ?, address = ?, phone = ? WHERE user_id = ?",
+            (user.name, user.email, user.address, user.phone, user_id)
+        )
+        self.audit_log_service.log_audit_event(
+            table_name="user",
+            record_id=user_id,
+            operation=OperationType.UPDATE,
+            old_data=old,
+            new_data=self._object_to_dict(user)
+        )
         return user
 
     def _map_user_row_to_object(self, row: tuple) -> User:
-        """
-        Map a database row to the appropriate User subclass based on discriminator.
-        Args:
-            row: Tuple representing a database row.
-        Returns:
-            User: Instantiated User object or subclass (Admin, Staff, Customer).
-        """
-        # Assuming order: user_id, name, username, password, phone, email, address, discriminator
-        discriminator = row[7]
-        user_data = {
-            "user_id": row[0],
-            "name": row[1],
-            "username": row[2],
-            "password": row[3],
-            "phone": row[4],
-            "email": row[5],
-            "address": row[6],
-            "discriminator": discriminator
+        disc = row[7]
+        base = {
+            "user_id": row[0], "name": row[1], "username": row[2],
+            "password": row[3], "phone": row[4], "email": row[5],
+            "address": row[6], "discriminator": disc
         }
-        if discriminator == "admin":
-            return Admin(**user_data)
-        elif discriminator == "staff":
-            # Fetch staff-specific fields
-            staff_query = "SELECT jobtype, hourly_rate FROM staff WHERE staff_id = ?"
-            staff_rows = self.db.execute_query(staff_query, (row[0],))
-            if staff_rows:
-                user_data.update({
-                    "staff_id": row[0],
-                    "jobtype": StaffJobType(staff_rows[0][0]) if staff_rows[0][0] else None,
-                    "hourly_rate": staff_rows[0][1] if staff_rows[0][1] else 0
-                })
-            return Staff(**user_data)
-        elif discriminator == "customer":
-            return Customer(**user_data)
-        return User(**user_data)
+        if disc == "admin":
+            return Admin(**base)
+        if disc == "staff":
+            details = self.db.select_data(
+                table_name="staff",
+                columns=["jobtype", "hourly_rate"],
+                where="staff_id = ?",
+                where_params=(row[0],),
+                limit=1
+            )
+            if details:
+                base.update({"staff_id": row[0], "jobtype": StaffJobType(details[0][0]), "hourly_rate": details[0][1] or 0})
+            return Staff(**base)
+        if disc == "customer":
+            return Customer(**base)
+        return User(**base)
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         if not obj:
             return {}
-        result = {}
-        for key, value in vars(obj).items():
-            if not key.startswith("_"):
-                if isinstance(value, StaffJobType):
-                    result[key] = value.value if value else None
-                elif key == "password":
-                    # Avoid logging plain text passwords
-                    result[key] = "[REDACTED]"
-                else:
-                    result[key] = value
+        result: Dict[str, Any] = {}
+        for k, v in vars(obj).items():
+            if k.startswith("_"):
+                continue
+            if isinstance(v, StaffJobType):
+                result[k] = v.value
+            elif k == "password":
+                result[k] = "[REDACTED]"
+            else:
+                result[k] = v
         return result

@@ -25,14 +25,6 @@ class AuditLogService:
             old_data=json.dumps(old_data) if old_data else None,
             new_data=json.dumps(new_data) if new_data else None
         )
-        # SQL query to insert audit log
-        insert_query = """
-            INSERT INTO audit_log (table_name, record_id, operation, old_data, new_data, operated_at)
-            VALUES (?, ?, ?, ?, ?, GETDATE())
-        """
-        self.db.execute_non_query(
-            insert_query,
-            (audit_log.table_name, audit_log.record_id, audit_log.operation.value,
-             audit_log.old_data, audit_log.new_data)
-        )
+        
+        self.db.insert_data(table_name="audit_log", data=audit_log.asdict())
         

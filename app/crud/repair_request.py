@@ -1,9 +1,9 @@
-# services/repair_request_service.py
 from ..db.connection import Database
 from ..models.repair import RepairRequest
 from ..models.enums import OperationType
 from .audit import AuditLogService
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 
 class RepairRequestService:
@@ -14,31 +14,25 @@ class RepairRequestService:
     def create_repair_request(self, vehicle_id: int, customer_id: int, description: str) -> RepairRequest:
         """
         Create a new repair request.
-        Args:
-            vehicle_id (int): ID of the vehicle.
-            customer_id (int): ID of the customer.
-            description (str): Description of the repair request.
-        Returns:
-            RepairRequest: The created repair request.
         """
         repair_request = RepairRequest(
             vehicle_id=vehicle_id,
             customer_id=customer_id,
-            description=description
+            description=description,
+            request_time=datetime.now()
         )
-        insert_query = """
-            INSERT INTO repair_request (vehicle_id, customer_id, description, request_time)
-            VALUES (?, ?, ?, GETDATE())
-        """
-        self.db.execute_non_query(
-            insert_query,
-            (repair_request.vehicle_id, repair_request.customer_id,
-             repair_request.description)
-        )
-        select_id_query = "SELECT @@IDENTITY AS id"
-        request_id_row = self.db.execute_query(select_id_query)
-        repair_request.request_id = int(
-            request_id_row[0][0]) if request_id_row else None
+
+        self.db.insert_data("repair_request", {
+            "vehicle_id": vehicle_id,
+            "customer_id": customer_id,
+            "description": description,
+            "request_time": repair_request.request_time,
+        })
+
+        # Use raw query for identity retrieval (if not wrapped)
+        result = self.db.execute_query("SELECT @@IDENTITY AS id")
+        repair_request.request_id = int(result[0][0]) if result else None
+
         self.audit_log_service.log_audit_event(
             table_name="repair_request",
             record_id=repair_request.request_id,
@@ -50,41 +44,34 @@ class RepairRequestService:
     def get_repair_request_by_id(self, request_id: int) -> Optional[RepairRequest]:
         """
         Get a repair request by ID.
-        Args:
-            request_id (int): ID of the repair request.
-        Returns:
-            Optional[RepairRequest]: RepairRequest object if found, otherwise None.
         """
-        select_query = """
-            SELECT request_id, vehicle_id, customer_id, description, request_time
-            FROM repair_request
-            WHERE request_id = ?
-        """
-        rows = self.db.execute_query(select_query, (request_id,))
-        if rows:
-            return RepairRequest(
-                request_id=rows[0][0],
-                vehicle_id=rows[0][1],
-                customer_id=rows[0][2],
-                description=rows[0][3],
-                request_time=rows[0][4] if rows[0][4] else None
-            )
-        return None
+        rows = self.db.select_data(
+            table="repair_request",
+            columns=["request_id", "vehicle_id", "customer_id", "description", "request_time"],
+            filters={"request_id": request_id}
+        )
+
+        if not rows:
+            return None
+        row = rows[0]
+        return RepairRequest(
+            request_id=row[0],
+            vehicle_id=row[1],
+            customer_id=row[2],
+            description=row[3],
+            request_time=row[4] if row[4] else None
+        )
 
     def get_repair_requests_by_customer_id(self, customer_id: int) -> List[RepairRequest]:
         """
         Get all repair requests for a specific customer.
-        Args:
-            customer_id (int): ID of the customer.
-        Returns:
-            List[RepairRequest]: List of RepairRequest objects.
         """
-        select_query = """
-            SELECT request_id, vehicle_id, customer_id, description, request_time
-            FROM repair_request
-            WHERE customer_id = ?
-        """
-        rows = self.db.execute_query(select_query, (customer_id,))
+        rows = self.db.select_data(
+            table="repair_request",
+            columns=["request_id", "vehicle_id", "customer_id", "description", "request_time"],
+            filters={"customer_id": customer_id}
+        )
+
         return [
             RepairRequest(
                 request_id=row[0],

@@ -1,9 +1,9 @@
-# services/repair_log_service.py
 from ..db.connection import Database
 from ..models.repair import RepairLog
 from ..models.enums import OperationType
 from .audit import AuditLogService
 from typing import Optional, Dict, Any, List
+from datetime import datetime
 
 
 class RepairLogService:
@@ -14,29 +14,31 @@ class RepairLogService:
     def create_repair_log(self, order_id: int, staff_id: int, log_message: str) -> RepairLog:
         """
         Create a new repair log.
-        Args:
-            order_id (int): ID of the repair order.
-            staff_id (int): ID of the staff member.
-            log_message (str): Description of the repair log.
-        Returns:
-            RepairLog: The created repair log.
         """
+        now = datetime.now()
         repair_log = RepairLog(
             order_id=order_id,
             staff_id=staff_id,
+            log_time=now,
             log_message=log_message
         )
-        insert_query = """
-            INSERT INTO repair_log (order_id, staff_id, log_time, log_message)
-            VALUES (?, ?, GETDATE(), ?)
-        """
-        self.db.execute_non_query(
-            insert_query,
-            (repair_log.order_id, repair_log.staff_id, repair_log.log_message)
+
+        # 使用 insert_data 统一插入
+        self.db.insert_data(
+            table_name="repair_log",
+            data={
+                "order_id": repair_log.order_id,
+                "staff_id": repair_log.staff_id,
+                "log_time":   repair_log.log_time,
+                "log_message": repair_log.log_message,
+            }
         )
-        select_id_query = "SELECT @@IDENTITY AS id"
-        log_id_row = self.db.execute_query(select_id_query)
-        repair_log.log_id = int(log_id_row[0][0]) if log_id_row else None
+
+        # 获取自增主键
+        row = self.db.execute_query("SELECT LAST_INSERT_ID()")
+        repair_log.log_id = int(row[0][0]) if row else None
+
+        # 审计日志
         self.audit_log_service.log_audit_event(
             table_name="repair_log",
             record_id=repair_log.log_id,
@@ -48,50 +50,55 @@ class RepairLogService:
     def get_repair_log_by_id(self, log_id: int) -> Optional[RepairLog]:
         """
         Get a repair log by ID.
-        Args:
-            log_id (int): ID of the repair log.
-        Returns:
-            Optional[RepairLog]: RepairLog object if found, otherwise None.
         """
-        select_query = """
-            SELECT log_id, order_id, staff_id, log_time, log_message
-            FROM repair_log
-            WHERE log_id = ?
-        """
-        rows = self.db.execute_query(select_query, (log_id,))
-        if rows:
-            return RepairLog(
-                log_id=rows[0][0],
-                order_id=rows[0][1],
-                staff_id=rows[0][2],
-                log_time=rows[0][3] if rows[0][3] else None,
-                log_message=rows[0][4]
-            )
-        return None
+        rows = self.db.select_data(
+            table_name="repair_log",
+            columns=["log_id", "order_id", "staff_id", "log_time", "log_message"],
+            where="log_id = ?",
+            where_params=(log_id,)
+        )
+        if not rows:
+            return None
+
+        r = rows[0]
+        return RepairLog(
+            log_id=r[0],
+            order_id=r[1],
+            staff_id=r[2],
+            log_time=r[3],
+            log_message=r[4]
+        )
 
     def get_repair_logs_by_order_id(self, order_id: int) -> List[RepairLog]:
         """
         Get all repair logs associated with a specific repair order.
-        Args:
-            order_id (int): ID of the repair order.
-        Returns:
-            List[RepairLog]: List of RepairLog objects associated with the order.
         """
-        select_query = """
-            SELECT log_id, order_id, staff_id, log_time, log_message
-            FROM repair_log
-            WHERE order_id = ?
-        """
-        rows = self.db.execute_query(select_query, (order_id,))
-        return [RepairLog(
-            log_id=row[0],
-            order_id=row[1],
-            staff_id=row[2],
-            log_time=row[3] if row[3] else None,
-            log_message=row[4]
-        ) for row in rows] if rows else []
+        rows = self.db.select_data(
+            table_name="repair_log",
+            columns=["log_id", "order_id", "staff_id", "log_time", "log_message"],
+            where="order_id = ?",
+            where_params=(order_id,),
+            order_by="log_time ASC"
+        )
+        return [
+            RepairLog(
+                log_id=r[0],
+                order_id=r[1],
+                staff_id=r[2],
+                log_time=r[3],
+                log_message=r[4]
+            )
+            for r in rows
+        ]
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
+        """
+        将 dataclass 对象转换为 dict，用于审计日志。
+        """
         if not obj:
             return {}
-        return {key: value for key, value in vars(obj).items() if not key.startswith("_")}
+        return {
+            key: value
+            for key, value in vars(obj).items()
+            if not key.startswith("_")
+        }

@@ -10,18 +10,17 @@ class FeedbackService:
         self.db = db
         self.audit_log_service = AuditLogService(db)
 
-    def create_feedback(self, customer_id: int, log_id: int, rating: int, comments: Optional[str] = None) -> Feedback:
+    def create_feedback(
+        self,
+        customer_id: int,
+        log_id: int,
+        rating: int,
+        comments: Optional[str] = None
+    ) -> Feedback:
         """
-        Create a new feedback for a repair log.
-        Args:
-            customer_id (int): ID of the customer.
-            log_id (int): ID of the repair log.
-            rating (int): Rating given by the customer.
-            comments (Optional[str]): Comments provided by the customer.
-        Returns:
-            Feedback: The created feedback.
+        Create a new feedback entry and audit the operation.
         """
-        # Create Feedback object with provided data
+        # Prepare feedback object
         feedback = Feedback(
             customer_id=customer_id,
             log_id=log_id,
@@ -29,24 +28,18 @@ class FeedbackService:
             comments=comments
         )
 
-        # SQL query to insert feedback
-        insert_query = """
-            INSERT INTO feedback (customer_id, log_id, rating, comments, feedback_time)
-            VALUES (?, ?, ?, ?, GETDATE())
-        """
-        self.db.execute_non_query(
-            insert_query,
-            (feedback.customer_id, feedback.log_id,
-             feedback.rating, feedback.comments)
+        # Insert data into 'feedback' table
+        self.db.insert_data(
+            table_name="feedback",
+            data=feedback.asdict()
         )
 
-        # Fetch the inserted feedback ID (assuming database returns last inserted ID)
-        select_id_query = "SELECT @@IDENTITY AS id"
-        feedback_id_row = self.db.execute_query(select_id_query)
-        feedback.feedback_id = int(
-            feedback_id_row[0][0]) if feedback_id_row else None
+        # Retrieve last inserted ID (MySQL)
+        last_id_row = self.db.execute_query("SELECT LAST_INSERT_ID();")
+        feedback_id = int(last_id_row[0][0]) if last_id_row else None
+        feedback.feedback_id = feedback_id
 
-        # Log audit event for the INSERT operation
+        # Log audit event
         self.audit_log_service.log_audit_event(
             table_name="feedback",
             record_id=feedback.feedback_id,
@@ -56,40 +49,37 @@ class FeedbackService:
 
         return feedback
 
-    def get_feedback_by_id(self, feedback_id: int) -> Optional[Feedback]:
+    def get_feedback_by_id(
+        self,
+        feedback_id: int
+    ) -> Optional[Feedback]:
         """
-        Get a feedback by ID.
-        Args:
-            feedback_id (int): ID of the feedback.
-        Returns:
-            Optional[Feedback]: Feedback object if found, otherwise None.
+        Retrieve a feedback by its ID.
         """
-        select_query = """
-            SELECT feedback_id, customer_id, log_id, rating, comments, feedback_time
-            FROM feedback
-            WHERE feedback_id = ?
-        """
-        rows = self.db.execute_query(select_query, (feedback_id,))
-        if rows:
-            # Map row to Feedback dataclass
-            return Feedback(
-                feedback_id=rows[0][0],
-                customer_id=rows[0][1],
-                log_id=rows[0][2],
-                rating=rows[0][3],
-                comments=rows[0][4] if rows[0][4] else None,
-                feedback_time=rows[0][5] if rows[0][5] else None
-            )
-        return None
+        rows = self.db.select_data(
+            table_name="feedback",
+            columns=["feedback_id", "customer_id", "log_id", "rating", "comments", "feedback_time"],
+            where="feedback_id = ?",
+            where_params=(feedback_id,),
+            limit=1
+        )
+        if not rows:
+            return None
+
+        row = rows[0]
+        return Feedback(
+            feedback_id=row[0],
+            customer_id=row[1],
+            log_id=row[2],
+            rating=row[3],
+            comments=row[4] if row[4] else None,
+            feedback_time=row[5] if row[5] else None
+        )
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         """
-        Convert an object to a dictionary for audit logging.
-        Args:
-            obj: Object to convert.
-        Returns:
-            Dict[str, Any]: Dictionary representation of the object.
+        Convert an object to a dict for audit logging.
         """
         if not obj:
             return {}
-        return {key: value for key, value in vars(obj).items() if not key.startswith("_")}
+        return {k: v for k, v in vars(obj).items() if not k.startswith("_")}

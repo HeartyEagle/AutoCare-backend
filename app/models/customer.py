@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Optional, List
 from .enums import VehicleBrand, VehicleType, VehicleColor
 from datetime import datetime
@@ -15,6 +15,9 @@ class Vehicle:
     type: Optional[VehicleType] = None
     color: Optional[VehicleColor] = None
     remarks: Optional[str] = None
+    
+    def asdict(self):
+        return asdict(self)
 
 
 @dataclass
@@ -25,3 +28,6 @@ class Feedback:
     rating: int = 0
     comments: Optional[str] = None
     feedback_time: Optional[datetime] = None
+    
+    def asdict(self):
+        return asdict(self)

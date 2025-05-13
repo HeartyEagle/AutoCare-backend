@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Optional
 from datetime import datetime
 from .enums import OperationType
@@ -6,12 +6,13 @@ from .enums import OperationType
 
 @dataclass
 class AuditLog:
-    # Primary key, optional for new objects before DB insert
     log_id: Optional[int] = None
-    table_name: str = ""  # Name of the table operated on
-    record_id: int = 0  # ID of the record operated on
-    # Type of operation (INSERT, UPDATE, DELETE)
+    table_name: str = ""
+    record_id: int = 0
     operation: Optional[OperationType] = None
-    old_data: Optional[str] = None  # JSON snapshot of data before operation
-    new_data: Optional[str] = None  # JSON snapshot of data after operation
-    operated_at: Optional[datetime] = None  # Timestamp of the operation
+    old_data: Optional[str] = None
+    new_data: Optional[str] = None
+    operated_at: Optional[datetime] = None
+
+    def asdict(self):
+        return asdict(self)
