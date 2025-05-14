@@ -128,6 +128,7 @@ class CustomerRepairRequestCreateResponse(BaseModel):
     vehicle_id: Optional[int] = None
     customer_id: Optional[int] = None
     description: Optional[str] = None
+    request_status: Optional[str] = None
     request_time: Optional[datetime] = None
 
 

@@ -437,7 +437,7 @@ def create_repair_request(
             vehicle_id=repair_request.vehicle_id,
             customer_id=repair_request.customer_id,
             description=repair_request.description,
-            status=repair_request.status,  # Include status in response
+            request_status=repair_request.status,  # Include status in response
             request_time=repair_request.request_time
         )
     except Exception as e:
