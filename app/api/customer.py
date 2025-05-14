@@ -19,7 +19,7 @@ def get_vehicle_brands(
 ):
     return VehicleBrands(
         status="success",
-        brands=[brand.name for brand in VehicleBrand]
+        brands=[brand.name[0] + brand.name[1:].lower() for brand in VehicleBrand]
     )
     
 @router.get("/vehicle/colors", response_model=VehicleColors)
@@ -29,7 +29,7 @@ def get_vehicle_colors(
 ):
     return VehicleColors(
         status="success",
-        colors=[color.name for color in VehicleColor]
+        colors=[color.name[0] + color.name[1:].lower() for color in VehicleColor]
     )
     
 @router.get("/vehicle/types", response_model=VehicleTypes)
@@ -39,7 +39,7 @@ def get_vehicle_types(
 ):
     return VehicleTypes(
         status="success",
-        types=[type.name for type in VehicleType]
+        types=[type.name[0] + type.name[1:].lower() for type in VehicleType]
     )
 
 
