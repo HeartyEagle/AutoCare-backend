@@ -14,6 +14,7 @@ from ..models.customer import *
 
 router = APIRouter(prefix="/customer", tags=["customer"])
 
+
 @router.post("/vehicle/add", response_model=AddVehicleResponse)
 def add_vehicle(
     new_vehicle: AddVehicle,
@@ -23,7 +24,7 @@ def add_vehicle(
     new_vehicle_brand = VehicleBrand[new_vehicle.brand.upper()]
     new_vehicle_type = VehicleType[new_vehicle.type.upper()]
     new_vehicle_color = VehicleColor[new_vehicle.color.upper()]
-    
+
     created_vehicle = vehicle_service.create_vehicle(
         new_vehicle.customer_id,
         new_vehicle.number_plate,
@@ -33,7 +34,7 @@ def add_vehicle(
         color=new_vehicle_color,
         remarks=new_vehicle.remarks
     )
-    
+
     if created_vehicle:
         return AddVehicleResponse(
             status="success"
@@ -43,12 +44,7 @@ def add_vehicle(
             status="failure",
             message="Failed to add vehicle, please try again later."
         )
-    
-    
-    
-    
-    
-    
+
 
 @router.get("/vehicle/brands", response_model=VehicleBrands)
 def get_vehicle_brands(
@@ -57,9 +53,11 @@ def get_vehicle_brands(
 ):
     return VehicleBrands(
         status="success",
-        brands=[brand.name[0] + brand.name[1:].lower() for brand in VehicleBrand]
+        brands=[brand.name[0] + brand.name[1:].lower()
+                for brand in VehicleBrand]
     )
-    
+
+
 @router.get("/vehicle/colors", response_model=VehicleColors)
 def get_vehicle_colors(
     current_user: User = Depends(get_current_user),
@@ -67,9 +65,11 @@ def get_vehicle_colors(
 ):
     return VehicleColors(
         status="success",
-        colors=[color.name[0] + color.name[1:].lower() for color in VehicleColor]
+        colors=[color.name[0] + color.name[1:].lower()
+                for color in VehicleColor]
     )
-    
+
+
 @router.get("/vehicle/types", response_model=VehicleTypes)
 def get_vehicle_types(
     current_user: User = Depends(get_current_user),
@@ -168,7 +168,7 @@ def get_customer_vehicles(
             customer_id=customer_id,
             customer_name=customer.name
         )
-        
+
     from ..dynpic.dynpic import DynamicImage
     dyn = DynamicImage(enable_cache=True)
 
@@ -442,29 +442,27 @@ def create_repair_request(
         )
 
 
-@router.post("/{customer_id}/repair-log/{log_id}/feedback", response_model=CustomerFeedbackResponse)
+@router.post("/{customer_id}/repair-order/{order_id}/feedback", response_model=CustomerFeedbackResponse)
 def create_feedback(
     customer_id: int,
-    log_id: int,
+    order_id: int,
     feedback_data: FeedbackCreate,
     current_user: User = Depends(get_current_user),
     user_service: UserService = Depends(get_user_service),
     repair_order_service: RepairOrderService = Depends(
         get_repair_order_service),
-    repair_log_service: RepairLogService = Depends(get_repair_log_service),
     feedback_service: FeedbackService = Depends(get_feedback_service)
 ):
     """
-    Create feedback for a specific repair log.
-    Customers can only provide feedback for their own repair logs.
+    Create feedback for a specific repair order.
+    Customers can only provide feedback for their own repair orders. Repair log ID is optional.
     Args:
         customer_id (int): ID of the customer providing feedback.
-        log_id (int): ID of the repair log being feedbacked on.
-        feedback_data (FeedbackCreate): Data for the feedback including rating and comments.
+        order_id (int): ID of the repair order being feedbacked on.
+        feedback_data (FeedbackCreate): Data for the feedback including rating, comments, and optional log_id.
         current_user (User): The currently authenticated user.
         user_service (UserService): Service for user-related operations.
         repair_order_service (RepairOrderService): Service for repair order operations.
-        repair_log_service (RepairLogService): Service for repair log operations.
         feedback_service (FeedbackService): Service for feedback operations.
     Returns:
         CustomerFeedbackResponse: Response containing the created feedback details.
@@ -484,17 +482,8 @@ def create_feedback(
             message="Customer not found"
         )
 
-    # Validate repair log exists
-    repair_log = repair_log_service.get_repair_log_by_id(log_id)
-    if not repair_log:
-        return CustomerFeedbackResponse(
-            status="failure",
-            message="Repair log not found"
-        )
-
     # Validate repair order exists and belongs to the customer
-    repair_order = repair_order_service.get_repair_order_by_id(
-        repair_log.order_id)
+    repair_order = repair_order_service.get_repair_order_by_id(order_id)
     if not repair_order or repair_order.customer_id != customer_id:
         return CustomerFeedbackResponse(
             status="failure",
@@ -509,20 +498,23 @@ def create_feedback(
         )
 
     try:
-        # Create the feedback using the service
+        # Create the feedback using the service, log_id is optional from feedback_data
         feedback = feedback_service.create_feedback(
             customer_id=customer_id,
-            log_id=log_id,
+            order_id=order_id,
+            log_id=feedback_data.log_id if hasattr(
+                # Default to 0 if not provided
+                feedback_data, 'log_id') and feedback_data.log_id else 0,
             rating=feedback_data.rating,
             comments=feedback_data.comments
         )
-
         return CustomerFeedbackResponse(
             status="success",
             message="Feedback submitted successfully",
             feedback_id=feedback.feedback_id,
             customer_id=feedback.customer_id,
-            log_id=feedback.log_id,
+            # Return None if default value
+            log_id=feedback.log_id if feedback.log_id != 0 else None,
             rating=feedback.rating,
             comments=feedback.comments,
             feedback_time=feedback.feedback_time
