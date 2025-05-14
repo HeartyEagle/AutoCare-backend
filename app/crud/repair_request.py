@@ -27,7 +27,7 @@ class RepairRequestService:
             customer_id=customer_id,
             description=description,
             status=status,
-            request_time=datetime.now()  # Use datetime object directly
+            request_time=str(datetime.now())  # Use datetime object directly
         )
         self.db.insert_data("repair_request", {
             "vehicle_id": vehicle_id,
@@ -56,10 +56,10 @@ class RepairRequestService:
             Optional[RepairRequest]: The repair request object if found, else None.
         """
         rows = self.db.select_data(
-            table="repair_request",
+            table_name="repair_request",
             columns=["request_id", "vehicle_id", "customer_id",
                      "description", "status", "request_time"],
-            filters={"request_id": request_id}
+            where=f"request_id = {request_id}"
         )
         if not rows:
             return None
@@ -83,10 +83,10 @@ class RepairRequestService:
             List[RepairRequest]: List of repair request objects for the customer.
         """
         rows = self.db.select_data(
-            table="repair_request",
+            table_name="repair_request",
             columns=["request_id", "vehicle_id", "customer_id",
                      "description", "status", "request_time"],
-            filters={"customer_id": customer_id}
+            where=f"customer_id = {customer_id}"
         )
         return [
             RepairRequest(

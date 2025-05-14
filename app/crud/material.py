@@ -23,7 +23,7 @@ class MaterialService:
         """
         Create a new material entry for a repair log.
         """
-        now = datetime.now()
+        now = str(datetime.now())
         material = Material(
             log_id=log_id,
             name=name,

@@ -15,7 +15,7 @@ class RepairLogService:
         """
         Create a new repair log.
         """
-        now = datetime.now()
+        now = str(datetime.now())
         repair_log = RepairLog(
             order_id=order_id,
             staff_id=staff_id,

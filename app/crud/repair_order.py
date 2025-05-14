@@ -23,7 +23,7 @@ class RepairOrderService:
         """
         Create a new repair order.
         """
-        now = datetime.now()
+        now = str(datetime.now())
         repair_order = RepairOrder(
             vehicle_id=vehicle_id,
             customer_id=customer_id,
