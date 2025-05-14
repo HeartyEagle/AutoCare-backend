@@ -7,8 +7,40 @@ from ..crud.repair_log import RepairLogService
 from ..core.dependencies import *
 from ..schemas.customer import *
 from ..util.api import object_to_dict
+from ..models.enums import *
+
 
 router = APIRouter(prefix="/customer", tags=["customer"])
+
+@router.get("/vehicle/brands", response_model=VehicleBrands)
+def get_vehicle_brands(
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return VehicleBrands(
+        status="success",
+        brands=[brand.name for brand in VehicleBrand]
+    )
+    
+@router.get("/vehicle/colors", response_model=VehicleColors)
+def get_vehicle_colors(
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return VehicleColors(
+        status="success",
+        colors=[color.name for color in VehicleColor]
+    )
+    
+@router.get("/vehicle/types", response_model=VehicleTypes)
+def get_vehicle_types(
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return VehicleTypes(
+        status="success",
+        types=[type.name for type in VehicleType]
+    )
 
 
 @router.get("/{customer_id}/profile", response_model=CustomerProfile)

@@ -25,7 +25,7 @@ class VehicleService:
         """
         Create a new vehicle for a customer.
         """
-        created_at = datetime.now()
+        # created_at = datetime.now()
         vehicle = Vehicle(
             customer_id=customer_id,
             license_plate=license_plate,
@@ -34,7 +34,7 @@ class VehicleService:
             type=type,
             color=color,
             remarks=remarks,
-            created_at=created_at  # if your model has a timestamp
+            # created_at=created_at  # if your model has a timestamp
         )
 
         # 插入
@@ -48,7 +48,7 @@ class VehicleService:
                 "type":           type.value,
                 "color":          color.value,
                 "remarks":        remarks,
-                "created_at":     created_at,
+                # "created_at":     created_at,
             }
         )
 
@@ -74,7 +74,7 @@ class VehicleService:
             table_name="vehicle",
             columns=[
                 "vehicle_id", "customer_id", "license_plate",
-                "brand", "model", "type", "color", "remarks", "created_at"
+                "brand", "model", "type", "color", "remarks"
             ],
             where=f"vehicle_id = {vehicle_id}",
         )
@@ -91,7 +91,7 @@ class VehicleService:
             type=VehicleType(r[5]) if r[5] is not None else None,
             color=VehicleColor(r[6]) if r[6] is not None else None,
             remarks=r[7],
-            created_at=r[8]
+            # created_at=r[8]
         )
 
     def get_vehicles_by_customer_id(self, customer_id: int) -> List[Vehicle]:
@@ -102,7 +102,7 @@ class VehicleService:
             table_name="vehicle",
             columns=[
                 "vehicle_id", "customer_id", "license_plate",
-                "brand", "model", "type", "color", "remarks", "created_at"
+                "brand", "model", "type", "color", "remarks"
             ],
             where=f"customer_id = {customer_id}",
             order_by="vehicle_id ASC"
@@ -117,7 +117,7 @@ class VehicleService:
                 type=VehicleType(r[5]) if r[5] is not None else None,
                 color=VehicleColor(r[6]) if r[6] is not None else None,
                 remarks=r[7],
-                created_at=r[8]
+                # created_at=r[8]
             )
             for r in rows
         ]
@@ -130,7 +130,7 @@ class VehicleService:
             table_name="vehicle",
             columns=[
                 "vehicle_id", "customer_id", "license_plate",
-                "brand", "model", "type", "color", "remarks", "created_at"
+                "brand", "model", "type", "color", "remarks"
             ]
         )
         return [
@@ -143,7 +143,7 @@ class VehicleService:
                 type=VehicleType(r[5]) if r[5] is not None else None,
                 color=VehicleColor(r[6]) if r[6] is not None else None,
                 remarks=r[7],
-                created_at=r[8]
+                # created_at=r[8]
             )
             for r in rows
         ]

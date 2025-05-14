@@ -3,6 +3,21 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
+class VehicleBrands(BaseModel):
+    status: str
+    message: Optional[str] = None
+    brands: list[str]
+    
+class VehicleColors(BaseModel):
+    status: str
+    message: Optional[str] = None
+    colors: list[str]
+    
+class VehicleTypes(BaseModel):
+    status: str
+    message: Optional[str] = None
+    types: list[str] 
+
 class CustomerProfile(BaseModel):
     """
     Schema for customer profile.
