@@ -168,6 +168,9 @@ def get_customer_vehicles(
             customer_id=customer_id,
             customer_name=customer.name
         )
+        
+    from ..dynpic.dynpic import DynamicImage
+    dyn = DynamicImage(enable_cache=True)
 
     return CustomerVehiclesResponse(
         status="success",
@@ -181,6 +184,8 @@ def get_customer_vehicles(
             "model": vehicle.model,
             "type": vehicle.type.value if vehicle.type else None,
             "color": vehicle.color.value if vehicle.color else None,
+            "image": dyn.by_keyword(f"{vehicle.brand.value} {vehicle.model} {vehicle.type.value} {vehicle.color.value}"),
+            "remarks": vehicle.remarks
         } for vehicle in vehicles]
     )
 

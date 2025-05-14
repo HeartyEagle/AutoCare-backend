@@ -98,6 +98,7 @@ class VehicleService:
             where=f"customer_id = {customer_id}",
             order_by="vehicle_id ASC"
         )
+        
         return [
             Vehicle(
                 vehicle_id=r[0],

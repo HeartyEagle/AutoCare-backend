@@ -53,6 +53,7 @@ class VehicleResponse(BaseModel):
     type: Optional[str]
     color: Optional[str]
     remarks: Optional[str] = None
+    image: Optional[str] = None
 
 
 class CustomerVehiclesResponse(BaseModel):
