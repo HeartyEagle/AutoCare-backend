@@ -13,6 +13,7 @@ class FeedbackService:
     def create_feedback(
         self,
         customer_id: int,
+        order_id: int,
         log_id: int,
         rating: int,
         comments: Optional[str] = None
@@ -23,22 +24,20 @@ class FeedbackService:
         # Prepare feedback object
         feedback = Feedback(
             customer_id=customer_id,
+            order_id=order_id,
             log_id=log_id,
             rating=rating,
             comments=comments
         )
-
         # Insert data into 'feedback' table
         self.db.insert_data(
             table_name="feedback",
             data=feedback.asdict()
         )
-
         # Retrieve last inserted ID (MySQL)
         last_id_row = self.db.execute_query("SELECT LAST_INSERT_ID();")
         feedback_id = int(last_id_row[0][0]) if last_id_row else None
         feedback.feedback_id = feedback_id
-
         # Log audit event
         self.audit_log_service.log_audit_event(
             table_name="feedback",
@@ -46,7 +45,6 @@ class FeedbackService:
             operation=OperationType.INSERT,
             new_data=self._object_to_dict(feedback)
         )
-
         return feedback
 
     def get_feedback_by_id(
@@ -58,21 +56,22 @@ class FeedbackService:
         """
         rows = self.db.select_data(
             table_name="feedback",
-            columns=["feedback_id", "customer_id", "log_id", "rating", "comments", "feedback_time"],
+            columns=["feedback_id", "customer_id", "order_id",
+                     "log_id", "rating", "comments", "feedback_time"],
             where=f"feedback_id = {feedback_id}",
             limit=1
         )
         if not rows:
             return None
-
         row = rows[0]
         return Feedback(
             feedback_id=row[0],
             customer_id=row[1],
-            log_id=row[2],
-            rating=row[3],
-            comments=row[4] if row[4] else None,
-            feedback_time=row[5] if row[5] else None
+            order_id=row[2],
+            log_id=row[3],
+            rating=row[4],
+            comments=row[5] if row[5] else None,
+            feedback_time=row[6] if row[6] else None
         )
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:

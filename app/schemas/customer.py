@@ -7,17 +7,20 @@ class VehicleBrands(BaseModel):
     status: str
     message: Optional[str] = None
     brands: list[str]
-    
+
+
 class VehicleColors(BaseModel):
     status: str
     message: Optional[str] = None
     colors: list[str]
-    
+
+
 class VehicleTypes(BaseModel):
     status: str
     message: Optional[str] = None
-    types: list[str] 
-    
+    types: list[str]
+
+
 class AddVehicle(BaseModel):
     number_plate: str
     brand: str
@@ -26,10 +29,12 @@ class AddVehicle(BaseModel):
     model: str
     remarks: Optional[str] = None
     customer_id: int
-    
+
+
 class AddVehicleResponse(BaseModel):
     status: str
     message: Optional[str] = None
+
 
 class CustomerProfile(BaseModel):
     """
@@ -126,7 +131,8 @@ class CustomerRepairRequestCreateResponse(BaseModel):
 
 
 class FeedbackCreate(BaseModel):
-    rating: int
+    log_id: int = None
+    rating: int = None
     comments: Optional[str] = None
 
 
