@@ -2,7 +2,7 @@ from dataclasses import dataclass, asdict
 from typing import Optional, List
 from .enums import VehicleBrand, VehicleType, VehicleColor
 from datetime import datetime
-
+from enum import Enum
 
 @dataclass
 class Vehicle:
@@ -17,7 +17,7 @@ class Vehicle:
     remarks: Optional[str] = None
     
     def asdict(self):
-        return asdict(self)
+        return {key:(asdict(self)[key] if not(isinstance(asdict(self)[key], Enum)) else asdict(self)[key].name) for key in asdict(self).keys()}
 
 
 @dataclass

@@ -17,6 +17,19 @@ class VehicleTypes(BaseModel):
     status: str
     message: Optional[str] = None
     types: list[str] 
+    
+class AddVehicle(BaseModel):
+    number_plate: str
+    brand: str
+    type: str
+    color: str
+    model: str
+    remarks: Optional[str] = None
+    customer_id: int
+    
+class AddVehicleResponse(BaseModel):
+    status: str
+    message: Optional[str] = None
 
 class CustomerProfile(BaseModel):
     """
@@ -39,7 +52,7 @@ class VehicleResponse(BaseModel):
     model: str
     type: Optional[str]
     color: Optional[str]
-    remarks: Optional[str]
+    remarks: Optional[str] = None
 
 
 class CustomerVehiclesResponse(BaseModel):

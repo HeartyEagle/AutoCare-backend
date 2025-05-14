@@ -1,6 +1,5 @@
 from enum import Enum
 
-
 class VehicleBrand(str, Enum):
     TOYOTA = "Toyota"
     HONDA = "Honda"

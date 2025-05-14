@@ -8,9 +8,47 @@ from ..core.dependencies import *
 from ..schemas.customer import *
 from ..util.api import object_to_dict
 from ..models.enums import *
+from ..models.customer import *
+# from ..schemas.customer
 
 
 router = APIRouter(prefix="/customer", tags=["customer"])
+
+@router.post("/vehicle/add", response_model=AddVehicleResponse)
+def add_vehicle(
+    new_vehicle: AddVehicle,
+    user_service: UserService = Depends(get_user_service),
+    vehicle_service: VehicleService = Depends(get_vehicle_service)
+):
+    new_vehicle_brand = VehicleBrand[new_vehicle.brand.upper()]
+    new_vehicle_type = VehicleType[new_vehicle.type.upper()]
+    new_vehicle_color = VehicleColor[new_vehicle.color.upper()]
+    
+    created_vehicle = vehicle_service.create_vehicle(
+        new_vehicle.customer_id,
+        new_vehicle.number_plate,
+        brand=new_vehicle_brand,
+        model=new_vehicle.model,
+        type=new_vehicle_type,
+        color=new_vehicle_color,
+        remarks=new_vehicle.remarks
+    )
+    
+    if created_vehicle:
+        return AddVehicleResponse(
+            status="success"
+        )
+    else:
+        return AddVehicleResponse(
+            status="failure",
+            message="Failed to add vehicle, please try again later."
+        )
+    
+    
+    
+    
+    
+    
 
 @router.get("/vehicle/brands", response_model=VehicleBrands)
 def get_vehicle_brands(

@@ -54,6 +54,7 @@ class UserLogin(BaseModel):
     password: str
 
 
+
 # Response schema after user creation
 class UserInDB(UserBase):
     id: int

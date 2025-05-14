@@ -40,16 +40,7 @@ class VehicleService:
         # 插入
         self.db.insert_data(
             table_name="vehicle",
-            data={
-                "customer_id":    customer_id,
-                "license_plate":  license_plate,
-                "brand":          brand.value,
-                "model":          model,
-                "type":           type.value,
-                "color":          color.value,
-                "remarks":        remarks,
-                # "created_at":     created_at,
-            }
+            data=vehicle.asdict()
         )
 
         # 获取自增主键
@@ -112,10 +103,10 @@ class VehicleService:
                 vehicle_id=r[0],
                 customer_id=r[1],
                 license_plate=r[2],
-                brand=VehicleBrand(r[3]) if r[3] is not None else None,
+                brand=VehicleBrand[r[3]] if r[3] is not None else None,
                 model=r[4],
-                type=VehicleType(r[5]) if r[5] is not None else None,
-                color=VehicleColor(r[6]) if r[6] is not None else None,
+                type=VehicleType[r[5]] if r[5] is not None else None,
+                color=VehicleColor[r[6]] if r[6] is not None else None,
                 remarks=r[7],
                 # created_at=r[8]
             )
