@@ -19,7 +19,7 @@ class RepairRequestService:
             vehicle_id=vehicle_id,
             customer_id=customer_id,
             description=description,
-            request_time=datetime.now()
+            request_time=str(datetime.now())
         )
 
         self.db.insert_data("repair_request", {

@@ -43,11 +43,7 @@ def add_vehicle(
             status="failure",
             message="Failed to add vehicle, please try again later."
         )
-    
-    
-    
-    
-    
+
     
 
 @router.get("/vehicle/brands", response_model=VehicleBrands)
@@ -372,7 +368,7 @@ def get_repair_logs(
     )
 
 
-@router.post("/{customer_id}/repair-requests", response_model=CustomerRepairRequestCreateResponse)
+@router.post("/{customer_id}/create-repair-requests", response_model=CustomerRepairRequestCreateResponse)
 def create_repair_request(
     customer_id: int,
     request_data: RepairRequestCreate,
