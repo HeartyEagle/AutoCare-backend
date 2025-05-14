@@ -45,7 +45,6 @@ def add_vehicle(
             message="Failed to add vehicle, please try again later."
         )
 
-    
 
 @router.get("/vehicle/brands", response_model=VehicleBrands)
 def get_vehicle_brands(
@@ -421,12 +420,15 @@ def create_repair_request(
 
     try:
         # Create the repair request using the service
+        # Pass status if it exists in request_data, otherwise rely on default in service
+        # Default to "pending" if not in request_data
+        status = getattr(request_data, 'status', "pending")
         repair_request = repair_request_service.create_repair_request(
             vehicle_id=request_data.vehicle_id,
             customer_id=customer_id,
-            description=request_data.description
+            description=request_data.description,
+            status=status
         )
-
         return CustomerRepairRequestCreateResponse(
             status="success",
             message="Repair request created successfully",
@@ -434,6 +436,7 @@ def create_repair_request(
             vehicle_id=repair_request.vehicle_id,
             customer_id=repair_request.customer_id,
             description=repair_request.description,
+            status=repair_request.status,  # Include status in response
             request_time=repair_request.request_time
         )
     except Exception as e:

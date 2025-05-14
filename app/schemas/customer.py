@@ -118,6 +118,7 @@ class CustomerRepairLogsResponse(BaseModel):
 class RepairRequestCreate(BaseModel):
     vehicle_id: int
     description: str
+    status: Optional[str] = None
 
 
 class CustomerRepairRequestCreateResponse(BaseModel):

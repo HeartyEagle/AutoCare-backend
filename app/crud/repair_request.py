@@ -11,28 +11,34 @@ class RepairRequestService:
         self.db = db
         self.audit_log_service = AuditLogService(db)
 
-    def create_repair_request(self, vehicle_id: int, customer_id: int, description: str) -> RepairRequest:
+    def create_repair_request(self, vehicle_id: int, customer_id: int, description: str, status: str = "pending") -> RepairRequest:
         """
-        Create a new repair request.
+        Create a new repair request with an initial status.
+        Args:
+            vehicle_id (int): ID of the vehicle associated with the request.
+            customer_id (int): ID of the customer making the request.
+            description (str): Description of the repair issue.
+            status (str): Initial status of the request (defaults to 'pending').
+        Returns:
+            RepairRequest: The created repair request object.
         """
         repair_request = RepairRequest(
             vehicle_id=vehicle_id,
             customer_id=customer_id,
             description=description,
-            request_time=str(datetime.now())
+            status=status,
+            request_time=datetime.now()  # Use datetime object directly
         )
-
         self.db.insert_data("repair_request", {
             "vehicle_id": vehicle_id,
             "customer_id": customer_id,
             "description": description,
+            "status": status,
             "request_time": repair_request.request_time,
         })
-
         # Use raw query for identity retrieval (if not wrapped)
         result = self.db.execute_query("SELECT @@IDENTITY AS id")
         repair_request.request_id = int(result[0][0]) if result else None
-
         self.audit_log_service.log_audit_event(
             table_name="repair_request",
             record_id=repair_request.request_id,
@@ -44,13 +50,17 @@ class RepairRequestService:
     def get_repair_request_by_id(self, request_id: int) -> Optional[RepairRequest]:
         """
         Get a repair request by ID.
+        Args:
+            request_id (int): ID of the repair request to retrieve.
+        Returns:
+            Optional[RepairRequest]: The repair request object if found, else None.
         """
         rows = self.db.select_data(
             table="repair_request",
-            columns=["request_id", "vehicle_id", "customer_id", "description", "request_time"],
+            columns=["request_id", "vehicle_id", "customer_id",
+                     "description", "status", "request_time"],
             filters={"request_id": request_id}
         )
-
         if not rows:
             return None
         row = rows[0]
@@ -59,26 +69,34 @@ class RepairRequestService:
             vehicle_id=row[1],
             customer_id=row[2],
             description=row[3],
-            request_time=row[4] if row[4] else None
+            # Default to 'pending' if None
+            status=row[4] if row[4] else "pending",
+            request_time=row[5] if row[5] else None
         )
 
     def get_repair_requests_by_customer_id(self, customer_id: int) -> List[RepairRequest]:
         """
         Get all repair requests for a specific customer.
+        Args:
+            customer_id (int): ID of the customer whose requests to retrieve.
+        Returns:
+            List[RepairRequest]: List of repair request objects for the customer.
         """
         rows = self.db.select_data(
             table="repair_request",
-            columns=["request_id", "vehicle_id", "customer_id", "description", "request_time"],
+            columns=["request_id", "vehicle_id", "customer_id",
+                     "description", "status", "request_time"],
             filters={"customer_id": customer_id}
         )
-
         return [
             RepairRequest(
                 request_id=row[0],
                 vehicle_id=row[1],
                 customer_id=row[2],
                 description=row[3],
-                request_time=row[4] if row[4] else None
+                # Default to 'pending' if None
+                status=row[4] if row[4] else "pending",
+                request_time=row[5] if row[5] else None
             )
             for row in rows
         ] if rows else []
