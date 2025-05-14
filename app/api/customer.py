@@ -423,7 +423,7 @@ def create_repair_request(
         # Create the repair request using the service
         # Pass status if it exists in request_data, otherwise rely on default in service
         # Default to "pending" if not in request_data
-        status = getattr(request_data, 'status', "pending")
+        status = "pending"
         repair_request = repair_request_service.create_repair_request(
             vehicle_id=request_data.vehicle_id,
             customer_id=customer_id,

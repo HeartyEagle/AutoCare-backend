@@ -12,7 +12,7 @@ class RepairRequest:
     vehicle_id: int = 0  # Foreign key to vehicle
     customer_id: int = 0  # Foreign key to customer
     description: str = ""
-    status: str = "pending"  # pending, or order_created
+    status: Optional[str] = "pending"  # pending, or order_created
     request_time: Optional[datetime] = None
 
     def asdict(self):
