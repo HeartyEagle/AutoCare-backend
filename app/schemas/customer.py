@@ -73,6 +73,7 @@ class RepairRequestResponse(BaseModel):
     vehicle_id: int
     customer_id: int
     description: str
+    status: str
     request_time: datetime
 
 
