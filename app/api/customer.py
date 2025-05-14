@@ -246,6 +246,7 @@ def get_customer_repair_requests(
             "vehicle_id": request.vehicle_id,
             "customer_id": request.customer_id,
             "description": request.description,
+            "status": request.status,
             "request_time": request.request_time,
         } for request in repair_requests]
     )
