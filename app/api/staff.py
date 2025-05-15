@@ -282,7 +282,7 @@ def handle_assignment(
         )
 
 
-@router.post("/staff/{staff_id}/repair-log/{log_id}/materials", response_model=Dict)
+@router.post("/{staff_id}/repair-log/{log_id}/materials", response_model=Dict)
 def record_material(
     staff_id: int,
     log_id: int,
@@ -357,7 +357,7 @@ def record_material(
         )
 
 
-@router.post("/staff/{staff_id}/update-repair", response_model=Dict)
+@router.post("/{staff_id}/update-repair", response_model=Dict)
 def update_repair_progress(
     staff_id: int,
     update_data: RepairUpdate,
@@ -431,4 +431,86 @@ def update_repair_progress(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update repair progress: {str(e)}"
+        )
+
+
+@router.get("/{staff_id}/income", response_model=Dict)
+def get_staff_income(
+    staff_id: int,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Query historical repair records and total labor fee income for a staff member.
+    Total hours worked is the sum of time_worked from all repair assignments.
+    Only accessible to the staff member themselves.
+
+    Args:
+        staff_id (int): ID of the staff member querying their history.
+        current_user (User): The currently authenticated user.
+        repair_assignment_service (RepairAssignmentService): Service for handling repair assignment operations.
+
+    Returns:
+        Dict: Response containing the staff's repair history, total hours worked, and total income.
+
+    Raises:
+        HTTPException: If the user is unauthorized or an error occurs during the operation.
+    """
+    # Validate user is staff and matches the staff_id
+    if current_user.discriminator != "admin" or current_user.discriminator != "staff" or current_user.user_id != staff_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only the staff member can access their own repair history"
+        )
+
+    try:
+        # Fetch all repair assignments for the staff member
+        staff = user_service.get_user_by_id(staff_id)
+        assignments = repair_assignment_service.get_assignments_by_staff_id(
+            staff_id)
+        if not assignments:
+            return {
+                "status": "success",
+                "message": "No repair assignments found for this staff member",
+                "staff_id": staff_id,
+                "total_hours_worked": 0.0,
+                "total_income": 0.0,
+                "assignments": []
+            }
+
+        # Calculate total hours worked by summing time_worked from all assignments
+        total_hours_worked = sum(
+            assignment.time_worked for assignment in assignments if assignment.time_worked is not None
+        )
+
+        # Calculate total income from labor fees
+        # Assuming assignment_fee is calculated based on time_worked and hourly rate
+        total_income = staff.hourly_rate * total_hours_worked
+
+        # Format the assignment details for the response
+        assignment_details = [
+            {
+                "assignment_id": assignment.assignment_id,
+                "order_id": assignment.order_id,
+                "status": assignment.status,
+                "time_worked": assignment.time_worked if assignment.time_worked is not None else 0.0,
+                "assignment_fee": assignment.assignment_fee if assignment.assignment_fee is not None else 0.0
+            }
+            for assignment in assignments
+        ]
+
+        return {
+            "status": "success",
+            "message": "Repair history retrieved successfully",
+            "staff_id": staff_id,
+            "total_hours_worked": total_hours_worked,
+            "total_income": total_income,
+            "assignments": assignment_details
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve repair history: {str(e)}"
         )

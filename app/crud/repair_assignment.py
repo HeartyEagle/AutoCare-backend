@@ -180,6 +180,33 @@ class RepairAssignmentService:
             time_worked=r[4] if r[4] else None
         )
 
+    def get_assignments_by_staff_id(self, staff_id: int) -> List[RepairAssignment]:
+        """
+        Get all repair assignments for a specific staff member.
+
+        Args:
+            staff_id (int): ID of the staff member whose assignments to retrieve.
+
+        Returns:
+            List[RepairAssignment]: List of repair assignment objects for the staff member.
+        """
+        rows = self.db.select_data(
+            table_name="repair_assignment",
+            columns=["assignment_id", "order_id",
+                     "staff_id", "status", "time_worked"],
+            where=f"staff_id = {staff_id}"
+        )
+        return [
+            RepairAssignment(
+                assignment_id=row[0],
+                order_id=row[1],
+                staff_id=row[2],
+                status=row[3] if row[3] else "pending",
+                time_worked=row[4] if row[4] else None
+            )
+            for row in rows
+        ] if rows else []
+
     def update_repair_assignment_time(
         self,
         assignment_id: int,
