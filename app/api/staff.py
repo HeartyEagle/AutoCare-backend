@@ -5,6 +5,9 @@ from ..crud.user import UserService
 from ..core.dependencies import *
 from ..schemas.staff import *
 from ..models import User
+from ..models.enums import *
+from ..core.repair_order import assign_order, accept_order
+from typing import Dict
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
@@ -109,3 +112,323 @@ def get_staff_repair_orders(
         staff_name=staff.name,
         repair_orders=repair_order_data
     )
+
+
+@router.post("/repair-request/{request_id}/generate-order", response_model=Dict)
+def generate_repair_order(
+    request_id: int,
+    required_staff_type: StaffJobType,
+    remarks: Optional[str],
+    current_user: User = Depends(get_current_user),
+    repair_request_service: RepairRequestService = Depends(
+        get_repair_request_service),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Generate a repair order from a specific repair request.
+    Only accessible to staff and admin users.
+
+    Args:
+        request_id (int): ID of the repair request to convert into a repair order.
+        order_data (Dict): Optional data for the repair order (e.g., required_staff_type, remarks).
+        current_user (User): The currently authenticated user.
+        repair_request_service (RepairRequestService): Service for repair request operations.
+        repair_order_service (RepairOrderService): Service for repair order operations.
+
+    Returns:
+        Dict: Response containing the details of the created repair order.
+
+    Raises:
+        HTTPException: If the user is unauthorized, the repair request is not found,
+                       or the request is already processed.
+    """
+    # Check if the user is staff or admin
+    if current_user.discriminator not in ["staff", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only staff or admin can generate repair orders"
+        )
+
+    # Fetch the repair request
+    repair_request = repair_request_service.get_repair_request_by_id(
+        request_id)
+    if not repair_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Repair request with ID {request_id} not found"
+        )
+
+    # Check if the repair request is in a valid state (pending)
+    if repair_request.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Repair request with ID {request_id} is not in a pending state (current status: {repair_request.status})"
+        )
+
+    try:
+        # Create a new repair order linked to the repair request
+        repair_order = repair_order_service.create_repair_order(
+            vehicle_id=repair_request.vehicle_id,
+            customer_id=repair_request.customer_id,
+            request_id=request_id,
+            required_staff_type=required_staff_type,
+            status=RepairStatus.PENDING,
+            remarks=remarks
+        )
+
+        # Update the repair request status to "order_created"
+        repair_request_service.update_repair_request_status(
+            request_id, "order_created")
+        assign_order(repair_order.order_id, repair_order_service,
+                     repair_assignment_service)
+
+        return {
+            "status": "success",
+            "message": "Repair order generated successfully",
+            "order_id": repair_order.order_id,
+            "request_id": repair_request.request_id,
+            "vehicle_id": repair_order.vehicle_id,
+            "customer_id": repair_order.customer_id,
+            "required_staff_type": repair_order.required_staff_type.value if repair_order.required_staff_type else None,
+            "status": repair_order.status.value if repair_order.status else None,
+            "order_time": repair_order.order_time,
+            "remarks": repair_order.remarks
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate repair order: {str(e)}"
+        )
+
+
+@router.post("/{staff_id}/assignments/{assignment_id}/{action}", response_model=Dict)
+def handle_assignment(
+    staff_id: int,
+    assignment_id: int,
+    action: str,  # "accept" or "reject"
+    current_user: User = Depends(get_current_user),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Allow staff to accept or reject an assigned repair order.
+    If accepted, the repair order status is updated to IN_PROGRESS.
+    If rejected, the order is reassigned to another eligible staff member.
+
+    Args:
+        staff_id (int): ID of the staff member responding to the assignment.
+        assignment_id (int): ID of the assignment to accept or reject.
+        action (str): Action to take ("accept" or "reject").
+        current_user (User): The currently authenticated user.
+        repair_order_service (RepairOrderService): Service for handling repair order operations.
+        repair_assignment_service (RepairAssignmentService): Service for handling assignment operations.
+
+    Returns:
+        Dict: Response containing the result of the action.
+
+    Raises:
+        HTTPException: If the user is unauthorized, the action is invalid, or the operation fails.
+    """
+    # Validate user is staff and matches the staff_id
+    if current_user.discriminator != "staff" or current_user.user_id != staff_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only the assigned staff can accept or reject this assignment"
+        )
+
+    # Map action to boolean for accept_order function
+    if action.lower() == "accept":
+        accept = True
+    elif action.lower() == "reject":
+        accept = False
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid action. Use 'accept' or 'reject'"
+        )
+
+    try:
+        # Call the utility function to handle the acceptance or rejection
+        updated_assignment = accept_order(
+            assignment_id=assignment_id,
+            staff_id=staff_id,
+            accept=accept,
+            repair_order_service=repair_order_service,
+            repair_assignment_service=repair_assignment_service
+        )
+        response = {
+            "status": "success",
+            "message": f"Assignment {action}ed successfully",
+            "assignment_id": updated_assignment.assignment_id,
+            "new_status": updated_assignment.status
+        }
+        if not accept:
+            response["message"] += ". Reassignment attempted."
+        return response
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Validation error: {str(e)}"
+        )
+    except RuntimeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Operation failed: {str(e)}"
+        )
+
+
+@router.post("/staff/{staff_id}/repair-log/{log_id}/materials", response_model=Dict)
+def record_material(
+    staff_id: int,
+    log_id: int,
+    material_data: MaterialCreate,
+    current_user: User = Depends(get_current_user),
+    repair_log_service: RepairLogService = Depends(get_repair_log_service),
+    material_service: MaterialService = Depends(get_material_service)
+):
+    """
+    Record materials used during a repair process for a specific repair log.
+    Only accessible to staff members.
+
+    Args:
+        staff_id (int): ID of the staff member recording the material.
+        log_id (int): ID of the repair log to associate the material with.
+        material_data (MaterialCreate): Data for the material (name, quantity, unit_price, remarks).
+        current_user (User): The currently authenticated user.
+        repair_log_service (RepairLogService): Service for repair log operations.
+        material_service (MaterialService): Service for material operations.
+
+    Returns:
+        Dict: Response containing the details of the recorded material.
+
+    Raises:
+        HTTPException: If the user is unauthorized, the repair log is not found,
+                       or the operation fails.
+    """
+    # Validate user is staff and matches the staff_id
+    if current_user.discriminator != "staff" or current_user.user_id != staff_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only the assigned staff can record materials"
+        )
+
+    # Validate the repair log exists and belongs to the staff
+    repair_log = repair_log_service.get_repair_log_by_id(log_id)
+    if not repair_log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Repair log with ID {log_id} not found"
+        )
+    if repair_log.staff_id != staff_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Repair log with ID {log_id} does not belong to staff ID {staff_id}"
+        )
+
+    try:
+        # Create the material record
+        material = material_service.create_material(
+            log_id=log_id,
+            name=material_data.name,
+            quantity=material_data.quantity,
+            unit_price=material_data.unit_price,
+            remarks=material_data.remarks
+        )
+        return {
+            "status": "success",
+            "message": "Material recorded successfully",
+            "material_id": material.material_id,
+            "log_id": material.log_id,
+            "name": material.name,
+            "quantity": material.quantity,
+            "unit_price": material.unit_price,
+            "total_price": material.total_price,
+            "remarks": material.remarks
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record material: {str(e)}"
+        )
+
+
+@router.post("/staff/{staff_id}/update-repair", response_model=Dict)
+def update_repair_progress(
+    staff_id: int,
+    update_data: RepairUpdate,
+    current_user: User = Depends(get_current_user),
+    repair_log_service: RepairLogService = Depends(get_repair_log_service),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service)
+):
+    """
+    Update repair progress or results by adding a log entry and optionally updating the repair order status.
+    Only accessible to staff members.
+
+    Args:
+        staff_id (int): ID of the staff member updating the repair progress.
+        update_data (RepairUpdate): Data including order_id, log message, and optional new status for the order.
+        current_user (User): The currently authenticated user.
+        repair_log_service (RepairLogService): Service for repair log operations.
+        repair_order_service (RepairOrderService): Service for repair order operations.
+
+    Returns:
+        Dict: Response containing the details of the created log entry and updated status (if applicable).
+
+    Raises:
+        HTTPException: If the user is unauthorized, the repair order is not found,
+                       or the operation fails.
+    """
+    # Validate user is staff and matches the staff_id
+    if current_user.discriminator != "staff" or current_user.user_id != staff_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only staff can update repair progress"
+        )
+
+    # Validate the repair order exists
+    repair_order = repair_order_service.get_repair_order_by_id(
+        update_data.order_id)
+    if not repair_order:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Repair order with ID {update_data.order_id} not found"
+        )
+
+    try:
+        # Create a new repair log entry with the progress update or result
+        repair_log = repair_log_service.create_repair_log(
+            order_id=update_data.order_id,
+            staff_id=staff_id,
+            log_message=update_data.log_message
+        )
+
+        # If a new status is provided, update the repair order status
+        if update_data.new_status:
+            updated_order = repair_order_service.update_repair_order_status(
+                order_id=update_data.order_id,
+                status=update_data.new_status
+            )
+            if not updated_order:
+                raise RuntimeError(
+                    f"Failed to update repair order status to {update_data.new_status}")
+
+        return {
+            "status": "success",
+            "message": "Repair progress updated successfully",
+            "log_id": repair_log.log_id,
+            "order_id": repair_log.order_id,
+            "log_message": repair_log.log_message,
+            "log_time": repair_log.log_time,
+            "new_order_status": update_data.new_status.value if update_data.new_status else None
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update repair progress: {str(e)}"
+        )

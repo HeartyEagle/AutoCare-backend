@@ -72,7 +72,7 @@ class RepairOrderService:
                 "request_id", "required_staff_type",
                 "status", "order_time", "finish_time", "remarks"
             ],
-            where=f"order_id = {order_id}", 
+            where=f"order_id = {order_id}",
         )
         if not rows:
             return None
@@ -82,7 +82,8 @@ class RepairOrderService:
             vehicle_id=r[1],
             customer_id=r[2],
             request_id=r[3],
-            required_staff_type=StaffJobType(r[4]) if r[4] is not None else None,
+            required_staff_type=StaffJobType(
+                r[4]) if r[4] is not None else None,
             status=RepairStatus(r[5]) if r[5] is not None else None,
             order_time=r[6],
             finish_time=r[7],
@@ -108,7 +109,8 @@ class RepairOrderService:
                 vehicle_id=r[1],
                 customer_id=r[2],
                 request_id=r[3],
-                required_staff_type=StaffJobType(r[4]) if r[4] is not None else None,
+                required_staff_type=StaffJobType(
+                    r[4]) if r[4] is not None else None,
                 status=RepairStatus(r[5]) if r[5] is not None else None,
                 order_time=r[6],
                 finish_time=r[7],
@@ -165,7 +167,8 @@ class RepairOrderService:
                 vehicle_id=r[1],
                 customer_id=r[2],
                 request_id=r[3],
-                required_staff_type=StaffJobType(r[4]) if r[4] is not None else None,
+                required_staff_type=StaffJobType(
+                    r[4]) if r[4] is not None else None,
                 status=RepairStatus(r[5]) if r[5] is not None else None,
                 order_time=r[6],
                 finish_time=r[7],

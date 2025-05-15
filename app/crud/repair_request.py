@@ -101,6 +101,44 @@ class RepairRequestService:
             for row in rows
         ] if rows else []
 
+    def update_repair_request_status(self, request_id: int, new_status: str) -> Optional[RepairRequest]:
+        """
+        Update the status of a repair request.
+
+        Args:
+            request_id (int): ID of the repair request to update.
+            new_status (str): New status to set for the repair request (e.g., 'pending', 'order_created').
+
+        Returns:
+            Optional[RepairRequest]: The updated repair request object if successful, else None.
+        """
+        # Fetch the existing repair request
+        repair_request = self.get_repair_request_by_id(request_id)
+        if not repair_request:
+            return None
+
+        # Store the old data for audit logging
+        old_data = self._object_to_dict(repair_request)
+
+        # Update the status in the object and database
+        repair_request.status = new_status
+        self.db.update_data(
+            table_name="repair_request",
+            data={"status": new_status},
+            where=f"request_id = {request_id}"
+        )
+
+        # Log the update action
+        self.audit_log_service.log_audit_event(
+            table_name="repair_request",
+            record_id=request_id,
+            operation=OperationType.UPDATE,
+            old_data=old_data,
+            new_data=self._object_to_dict(repair_request)
+        )
+
+        return repair_request
+
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         if not obj:
             return {}
