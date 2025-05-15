@@ -2,7 +2,7 @@ from ..db.connection import Database
 from ..models.customer import Feedback
 from ..models.enums import OperationType
 from .audit import AuditLogService
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 
 class FeedbackService:
@@ -73,6 +73,37 @@ class FeedbackService:
             comments=row[5] if row[5] else None,
             feedback_time=row[6] if row[6] else None
         )
+
+    def get_feedbacks_by_order_id(self, order_id: int) -> List[Feedback]:
+        """
+        Retrieve all feedback associated with a specific repair order.
+
+        Args:
+            order_id (int): ID of the repair order to fetch feedback for.
+
+        Returns:
+            List[Feedback]: List of feedback objects associated with the repair order.
+        """
+        rows = self.db.select_data(
+            table_name="feedback",
+            columns=["feedback_id", "customer_id", "order_id",
+                     "log_id", "rating", "comments", "feedback_time"],
+            where=f"order_id = {order_id}"
+        )
+        if not rows:
+            return []
+        return [
+            Feedback(
+                feedback_id=row[0],
+                customer_id=row[1],
+                order_id=row[2],
+                log_id=row[3] if row[3] != 0 else None,
+                rating=row[4],
+                comments=row[5] if row[5] else None,
+                feedback_time=row[6] if row[6] else None
+            )
+            for row in rows
+        ]
 
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         """

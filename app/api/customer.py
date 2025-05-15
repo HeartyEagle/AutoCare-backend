@@ -529,3 +529,90 @@ def create_feedback(
             status="failure",
             message=f"Failed to submit feedback: {str(e)}"
         )
+
+
+@router.get("/{customer_id}/repair-order/{order_id}/feedbacks", response_model=CustomerFeedbacksResponse)
+def get_feedbacks(
+    customer_id: int,
+    order_id: int,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service),
+    feedback_service: FeedbackService = Depends(get_feedback_service)
+):
+    """
+    Retrieve feedback for a specific repair order.
+    Customers can only access feedback for their own repair orders, while admins can access any feedback.
+
+    Args:
+        customer_id (int): ID of the customer associated with the repair order.
+        order_id (int): ID of the repair order for which feedback is to be retrieved.
+        current_user (User): The currently authenticated user.
+        user_service (UserService): Service for user-related operations.
+        repair_order_service (RepairOrderService): Service for repair order operations.
+        feedback_service (FeedbackService): Service for feedback operations.
+
+    Returns:
+        CustomerFeedbacksResponse: Response containing the feedback details for the repair order.
+    """
+    # Check if the user is a customer accessing their own data or an admin
+    if current_user.discriminator not in ["customer", "admin"] or \
+       (current_user.discriminator == "customer" and current_user.user_id != customer_id):
+        return CustomerFeedbacksResponse(
+            status="failure",
+            message="Unauthorized to access this customer's feedback"
+        )
+
+    # Validate customer exists
+    customer = user_service.get_user_by_id(customer_id)
+    if not customer or customer.discriminator != "customer":
+        return CustomerFeedbacksResponse(
+            status="failure",
+            message="Customer not found"
+        )
+
+    # Validate repair order exists and belongs to the customer
+    repair_order = repair_order_service.get_repair_order_by_id(order_id)
+    if not repair_order or repair_order.customer_id != customer_id:
+        return CustomerFeedbacksResponse(
+            status="failure",
+            message="Repair order not found or not associated with this customer"
+        )
+
+    try:
+        # Fetch feedback for the repair order
+        # Assuming FeedbackService has a method to get feedback by order_id
+        feedbacks = feedback_service.get_feedbacks_by_order_id(order_id)
+        if not feedbacks:
+            return CustomerFeedbacksResponse(
+                status="failure",
+                message="No feedback found for this repair order",
+                customer_id=customer_id,
+                order_id=order_id,
+                feedbacks=[]
+            )
+
+        return CustomerFeedbacksResponse(
+            status="success",
+            message="Feedback retrieved successfully",
+            customer_id=customer_id,
+            order_id=order_id,
+            feedbacks=[
+                {
+                    "feedback_id": feedback.feedback_id,
+                    "customer_id": feedback.customer_id,
+                    "order_id": order_id,
+                    "log_id": feedback.log_id if feedback.log_id != 0 else None,
+                    "rating": feedback.rating,
+                    "comments": feedback.comments,
+                    "feedback_time": feedback.feedback_time
+                }
+                for feedback in feedbacks
+            ]
+        )
+    except Exception as e:
+        return CustomerFeedbacksResponse(
+            status="failure",
+            message=f"Failed to retrieve feedback: {str(e)}"
+        )
