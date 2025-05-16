@@ -3,6 +3,7 @@ from ..models.customer import Feedback
 from ..models.enums import OperationType
 from .audit import AuditLogService
 from typing import Optional, Dict, Any
+from datetime import datetime
 
 
 class FeedbackService:
@@ -27,7 +28,8 @@ class FeedbackService:
             order_id=order_id,
             log_id=log_id,
             rating=rating,
-            comments=comments
+            comments=comments,
+            feedback_time=str(datetime.now())
         )
         # Insert data into 'feedback' table
         self.db.insert_data(
