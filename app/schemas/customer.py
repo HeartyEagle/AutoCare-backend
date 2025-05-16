@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field
 
@@ -148,3 +148,11 @@ class CustomerFeedbackResponse(BaseModel):
     rating: Optional[int] = None
     comments: Optional[str] = None
     feedback_time: Optional[datetime] = None
+
+
+class CustomerFeedbacksResponse(BaseModel):
+    status: str
+    message: str
+    customer_id: int = 0
+    order_id: int = 0
+    feedbacks: List[Dict[str, Any]] = []

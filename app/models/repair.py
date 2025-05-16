@@ -25,6 +25,7 @@ class RepairAssignment:
     assignment_id: Optional[int] = None
     order_id: int = 0  # Foreign key to repair_order
     staff_id: int = 0  # Foreign key to staff
+    status: str = "pending"  # pending, accepted, rejected
     time_worked: Optional[float] = None
 
     @property
