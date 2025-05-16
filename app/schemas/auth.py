@@ -37,7 +37,7 @@ class UserCreate(UserBase):
     password: str
     name: Annotated[str, Field(min_length=2, max_length=50)]
     address: Annotated[str, Field(min_length=5, max_length=100)]
-    username: Annotated[str, Field(min_length=4, max_length=20)]
+    username: str
     email: Annotated[EmailStr, Field(min_length=5, max_length=50)]
     phone: Annotated[str, Field(min_length=10, max_length=15)]
 
