@@ -53,8 +53,11 @@ class Staff(User):
     hourly_rate: int = 0
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+        cleared_kwargs = {key:kwargs[key] for key in kwargs.keys() if not (key in ["staff_id", "jobtype", "hourly_rate"])}
+        super().__init__(**cleared_kwargs)
         self.staff_id = kwargs.get("staff_id", self.user_id)
+        self.jobtype = kwargs.get("jobtype", None)
+        self.hourly_rate = kwargs.get("hourly_rate", None)
         self.discriminator = "staff"
 
     def __repr__(self) -> str:

@@ -459,7 +459,10 @@ def get_staff_income(
         HTTPException: If the user is unauthorized or an error occurs during the operation.
     """
     # Validate user is staff and matches the staff_id
-    if current_user.discriminator != "admin" or current_user.discriminator != "staff" or current_user.user_id != staff_id:
+    print(current_user.discriminator)
+    print(current_user.user_id)
+    print(staff_id)
+    if (current_user.discriminator != "admin" and current_user.discriminator != "staff") or current_user.user_id != staff_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Unauthorized: Only the staff member can access their own repair history"
