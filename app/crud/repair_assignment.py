@@ -130,7 +130,7 @@ class RepairAssignmentService:
             # Adjust column names and table name based on your schema
             staff_rows = self.db.select_data(
                 table_name="staff",
-                columns=["staff_id", "name", "job_type", "is_available"],
+                columns=["staff_id", "job_type", "hourly_rate"],
                 where=where_clause
             )
 
