@@ -216,6 +216,18 @@ def get_all_repair_requests(
         )
 
 
+@router.get("/staff-types", response_model=Dict)
+def get_staff_types(
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    return {
+        "status": "success",
+        "staff-types": [type.name[0] + type.name[1:].lower()
+                        for type in StaffJobType]
+    }
+
+
 @router.post("/repair-request/{request_id}/generate-order", response_model=Dict)
 def generate_repair_order(
     request_id: int,
