@@ -174,13 +174,17 @@ def get_all_repair_requests(
 
             # Fetch vehicle details
             vehicle = vehicle_service.get_vehicle_by_id(request.vehicle_id)
+            from ..dynpic.dynpic import DynamicImage
+            dyn = DynamicImage(enable_cache=True)
             vehicle_data = {
                 "vehicle_id": request.vehicle_id,
                 "license_plate": vehicle.license_plate if vehicle else "Unknown",
                 "brand": vehicle.brand.value if vehicle and vehicle.brand else "N/A",
                 "model": vehicle.model if vehicle else "N/A",
                 "type": vehicle.type.value if vehicle and vehicle.type else "N/A",
-                "color": vehicle.color.value if vehicle and vehicle.color else "N/A"
+                "color": vehicle.color.value if vehicle and vehicle.color else "N/A",
+                "image": dyn.by_keyword(f"{vehicle.brand.value} {vehicle.model} {vehicle.type.value} {vehicle.color.value}"),
+                "remarks": vehicle.remarks
             } if vehicle else {
                 "vehicle_id": request.vehicle_id,
                 "license_plate": "Unknown",
