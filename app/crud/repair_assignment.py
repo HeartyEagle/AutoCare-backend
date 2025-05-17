@@ -122,7 +122,7 @@ class RepairAssignmentService:
         """
         try:
             # Build the WHERE clause for the database query
-            where_clause = f"jobtype = '{required_staff_type}' AND is_available = 1"
+            where_clause = f"jobtype = '{required_staff_type}'"
             if exclude_staff_id is not None:
                 where_clause += f" AND staff_id != {exclude_staff_id}"
 
