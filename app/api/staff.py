@@ -118,65 +118,6 @@ def get_staff_repair_orders(
 def get_all_repair_requests(
     current_user: User = Depends(get_current_user),
     repair_request_service: RepairRequestService = Depends(
-        get_repair_request_service)
-):
-    """
-    Get all repair requests in the system.
-    Only accessible to staff and admin users.
-
-    Args:
-        current_user (User): The currently authenticated user.
-        repair_request_service (RepairRequestService): Service for repair request operations.
-
-    Returns:
-        Dict: Response containing a list of all repair requests.
-
-    Raises:
-        HTTPException: If the user is unauthorized.
-    """
-    # Check if the user is staff or admin
-    if current_user.discriminator not in ["staff", "admin"]:
-        return {
-            "status": "failure",
-            "message": "Unauthorized: Only staff or admin can access all repair requests"
-        }
-
-    try:
-        # Fetch all repair requests from the system
-        repair_requests = repair_request_service.get_all_repair_requests()
-        if not repair_requests:
-            return {
-                "status": "success_no_data",
-                "message": "No repair requests found in the system",
-                "repair_requests": []
-            }
-
-        return {
-            "status": "success",
-            "message": "Repair requests retrieved successfully",
-            "repair_requests": [
-                {
-                    "request_id": request.request_id,
-                    "vehicle_id": request.vehicle_id,
-                    "customer_id": request.customer_id,
-                    "description": request.description,
-                    "status": request.status,
-                    "request_time": request.request_time
-                }
-                for request in repair_requests
-            ]
-        }
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve repair requests: {str(e)}"
-        )
-
-
-@router.get("/repair-requests", response_model=Dict)
-def get_all_repair_requests(
-    current_user: User = Depends(get_current_user),
-    repair_request_service: RepairRequestService = Depends(
         get_repair_request_service),
     user_service: UserService = Depends(get_user_service),
     vehicle_service: VehicleService = Depends(get_vehicle_service)
@@ -268,6 +209,96 @@ def get_all_repair_requests(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve repair requests: {str(e)}"
+        )
+
+
+@router.post("/repair-request/{request_id}/generate-order", response_model=Dict)
+def generate_repair_order(
+    request_id: int,
+    required_staff_type: StaffJobType,
+    remarks: Optional[str],
+    current_user: User = Depends(get_current_user),
+    repair_request_service: RepairRequestService = Depends(
+        get_repair_request_service),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Generate a repair order from a specific repair request.
+    Only accessible to staff and admin users.
+
+    Args:
+        request_id (int): ID of the repair request to convert into a repair order.
+        order_data (Dict): Optional data for the repair order (e.g., required_staff_type, remarks).
+        current_user (User): The currently authenticated user.
+        repair_request_service (RepairRequestService): Service for repair request operations.
+        repair_order_service (RepairOrderService): Service for repair order operations.
+
+    Returns:
+        Dict: Response containing the details of the created repair order.
+
+    Raises:
+        HTTPException: If the user is unauthorized, the repair request is not found,
+                       or the request is already processed.
+    """
+    # Check if the user is staff or admin
+    if current_user.discriminator not in ["staff", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only staff or admin can generate repair orders"
+        )
+
+    # Fetch the repair request
+    repair_request = repair_request_service.get_repair_request_by_id(
+        request_id)
+    if not repair_request:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Repair request with ID {request_id} not found"
+        )
+
+    # Check if the repair request is in a valid state (pending)
+    if repair_request.status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Repair request with ID {request_id} is not in a pending state (current status: {repair_request.status})"
+        )
+
+    try:
+        # Create a new repair order linked to the repair request
+        repair_order = repair_order_service.create_repair_order(
+            vehicle_id=repair_request.vehicle_id,
+            customer_id=repair_request.customer_id,
+            request_id=request_id,
+            required_staff_type=required_staff_type,
+            status=RepairStatus.PENDING,
+            remarks=remarks
+        )
+
+        # Update the repair request status to "order_created"
+        repair_request_service.update_repair_request_status(
+            request_id, "order_created")
+        assign_order(repair_order.order_id, repair_order_service,
+                     repair_assignment_service)
+
+        return {
+            "status": "success",
+            "message": "Repair order generated successfully",
+            "order_id": repair_order.order_id,
+            "request_id": repair_request.request_id,
+            "vehicle_id": repair_order.vehicle_id,
+            "customer_id": repair_order.customer_id,
+            "required_staff_type": repair_order.required_staff_type.value if repair_order.required_staff_type else None,
+            "status": repair_order.status.value if repair_order.status else None,
+            "order_time": repair_order.order_time,
+            "remarks": repair_order.remarks
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate repair order: {str(e)}"
         )
 
 
