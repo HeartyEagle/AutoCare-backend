@@ -30,7 +30,7 @@ class RepairOrderService:
             request_id=request_id,
             required_staff_type=required_staff_type,
             status=status,
-            order_time=now,
+            order_time=str(now),
             remarks=remarks
         )
 
