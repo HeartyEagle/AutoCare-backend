@@ -53,7 +53,10 @@ class Staff(User):
     hourly_rate: int = 0
 
     def __init__(self, **kwargs):
+        kwargs["user_id"] = kwargs["staff_id"]
+        # print(kwargs)
         cleared_kwargs = {key:kwargs[key] for key in kwargs.keys() if not (key in ["staff_id", "jobtype", "hourly_rate"])}
+        print(cleared_kwargs)
         super().__init__(**cleared_kwargs)
         self.staff_id = kwargs.get("staff_id", self.user_id)
         self.jobtype = kwargs.get("jobtype", None)
