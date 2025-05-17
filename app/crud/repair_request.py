@@ -74,6 +74,31 @@ class RepairRequestService:
             request_time=row[5] if row[5] else None
         )
 
+    def get_all_repair_requests(self) -> List[RepairRequest]:
+        """
+        Get all repair requests in the system.
+
+        Returns:
+            List[RepairRequest]: List of all repair request objects.
+        """
+        rows = self.db.select_data(
+            table_name="repair_request",
+            columns=["request_id", "vehicle_id", "customer_id",
+                     "description", "status", "request_time"]
+        )
+        return [
+            RepairRequest(
+                request_id=row[0],
+                vehicle_id=row[1],
+                customer_id=row[2],
+                description=row[3],
+                # Default to 'pending' if None
+                status=row[4] if row[4] else "pending",
+                request_time=row[5] if row[5] else None
+            )
+            for row in rows
+        ] if rows else []
+
     def get_repair_requests_by_customer_id(self, customer_id: int) -> List[RepairRequest]:
         """
         Get all repair requests for a specific customer.

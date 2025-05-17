@@ -114,6 +114,65 @@ def get_staff_repair_orders(
     )
 
 
+@router.get("/repair-requests", response_model=Dict)
+def get_all_repair_requests(
+    current_user: User = Depends(get_current_user),
+    repair_request_service: RepairRequestService = Depends(
+        get_repair_request_service)
+):
+    """
+    Get all repair requests in the system.
+    Only accessible to staff and admin users.
+
+    Args:
+        current_user (User): The currently authenticated user.
+        repair_request_service (RepairRequestService): Service for repair request operations.
+
+    Returns:
+        Dict: Response containing a list of all repair requests.
+
+    Raises:
+        HTTPException: If the user is unauthorized.
+    """
+    # Check if the user is staff or admin
+    if current_user.discriminator not in ["staff", "admin"]:
+        return {
+            "status": "failure",
+            "message": "Unauthorized: Only staff or admin can access all repair requests"
+        }
+
+    try:
+        # Fetch all repair requests from the system
+        repair_requests = repair_request_service.get_all_repair_requests()
+        if not repair_requests:
+            return {
+                "status": "success_no_data",
+                "message": "No repair requests found in the system",
+                "repair_requests": []
+            }
+
+        return {
+            "status": "success",
+            "message": "Repair requests retrieved successfully",
+            "repair_requests": [
+                {
+                    "request_id": request.request_id,
+                    "vehicle_id": request.vehicle_id,
+                    "customer_id": request.customer_id,
+                    "description": request.description,
+                    "status": request.status,
+                    "request_time": request.request_time
+                }
+                for request in repair_requests
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to retrieve repair requests: {str(e)}"
+        )
+
+
 @router.post("/repair-request/{request_id}/generate-order", response_model=Dict)
 def generate_repair_order(
     request_id: int,
