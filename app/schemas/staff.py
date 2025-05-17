@@ -2,7 +2,7 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-from ..models.enums import RepairStatus
+from ..models.enums import *
 
 
 class StaffProfile(BaseModel):
@@ -50,3 +50,8 @@ class RepairUpdate(BaseModel):
     order_id: int
     log_message: str
     new_status: Optional[RepairStatus] = None
+
+
+class RepairOrderGenerate(BaseModel):
+    required_staff_type: StaffJobType
+    remarks: Optional[str] = None

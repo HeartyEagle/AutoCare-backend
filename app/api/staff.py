@@ -231,8 +231,7 @@ def get_staff_types(
 @router.post("/repair-request/{request_id}/generate-order", response_model=Dict)
 def generate_repair_order(
     request_id: int,
-    required_staff_type: StaffJobType,
-    remarks: Optional[str],
+    repair_order_data: RepairOrderGenerate,
     current_user: User = Depends(get_current_user),
     repair_request_service: RepairRequestService = Depends(
         get_repair_request_service),
@@ -288,9 +287,9 @@ def generate_repair_order(
             vehicle_id=repair_request.vehicle_id,
             customer_id=repair_request.customer_id,
             request_id=request_id,
-            required_staff_type=required_staff_type,
+            required_staff_type=repair_order_data.required_staff_type,
             status=RepairStatus.PENDING,
-            remarks=remarks
+            remarks=repair_order_data.remarks
         )
 
         # Update the repair request status to "order_created"
