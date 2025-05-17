@@ -306,7 +306,7 @@ def generate_repair_order(
             "vehicle_id": repair_order.vehicle_id,
             "customer_id": repair_order.customer_id,
             "required_staff_type": repair_order.required_staff_type.value if repair_order.required_staff_type else None,
-            "status": repair_order.status.value if repair_order.status else None,
+            "repair_order_status": repair_order.status.value if repair_order.status else None,
             "order_time": str(repair_order.order_time),
             "remarks": repair_order.remarks
         }
