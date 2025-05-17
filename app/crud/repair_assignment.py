@@ -122,7 +122,7 @@ class RepairAssignmentService:
         """
         try:
             # Build the WHERE clause for the database query
-            where_clause = f"job_type = '{required_staff_type}' AND is_available = 1"
+            where_clause = f"jobtype = '{required_staff_type}' AND is_available = 1"
             if exclude_staff_id is not None:
                 where_clause += f" AND staff_id != {exclude_staff_id}"
 
@@ -130,7 +130,7 @@ class RepairAssignmentService:
             # Adjust column names and table name based on your schema
             staff_rows = self.db.select_data(
                 table_name="staff",
-                columns=["staff_id", "job_type", "hourly_rate"],
+                columns=["staff_id", "jobtype", "hourly_rate"],
                 where=where_clause
             )
 
@@ -142,9 +142,8 @@ class RepairAssignmentService:
             eligible_staff = [
                 {
                     "staff_id": row[0],
-                    "name": row[1],
-                    "job_type": row[2],
-                    "is_available": bool(row[3])
+                    "jobtype": row[1],
+                    "hourly_rate": row[2]
                 }
                 for row in staff_rows
             ]
