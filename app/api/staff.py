@@ -292,9 +292,9 @@ def generate_repair_order(
             remarks=repair_order_data.remarks
         )
 
-        # Update the repair request status to "order_created"
-        repair_request_service.update_repair_request_status(
-            request_id, "order_created")
+        # # Update the repair request status to "order_created"
+        # repair_request_service.update_repair_request_status(
+        #     request_id, "order_created")
         assign_order(repair_order.order_id, repair_order_service,
                      repair_assignment_service)
 
@@ -314,6 +314,67 @@ def generate_repair_order(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to generate repair order: {str(e)}"
+        )
+
+
+@router.post("/repair-request/{request_id}/update-status", response_model=Dict)
+def update_repair_request_status(
+    request_id: int,
+    new_status: str,  # The new status to set for the repair request
+    current_user: User = Depends(get_current_user),
+    repair_request_service: RepairRequestService = Depends(
+        get_repair_request_service)
+):
+    """
+    Update the status of a specific repair request.
+    Only accessible to staff and admin users.
+
+    Args:
+        request_id (int): ID of the repair request to update.
+        new_status (str): New status to set for the repair request (e.g., 'pending', 'order_created').
+        current_user (User): The currently authenticated user.
+        repair_request_service (RepairRequestService): Service for repair request operations.
+
+    Returns:
+        Dict: Response containing the updated repair request details.
+
+    Raises:
+        HTTPException: If the user is unauthorized, the repair request is not found,
+                       or the operation fails.
+    """
+    # Check if the user is staff or admin
+    if current_user.discriminator not in ["staff", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only staff or admin can update repair request status"
+        )
+
+    try:
+        # Update the repair request status using the service
+        updated_request = repair_request_service.update_repair_request_status(
+            request_id=request_id,
+            new_status=new_status
+        )
+        if not updated_request:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Repair request with ID {request_id} not found"
+            )
+
+        return {
+            "status": "success",
+            "message": "Repair request status updated successfully",
+            "request_id": updated_request.request_id,
+            "vehicle_id": updated_request.vehicle_id,
+            "customer_id": updated_request.customer_id,
+            "description": updated_request.description,
+            "new_status": updated_request.status,
+            "request_time": updated_request.request_time
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update repair request status: {str(e)}"
         )
 
 

@@ -43,7 +43,7 @@ class RepairOrderService:
                 "request_id": request_id,
                 "required_staff_type": required_staff_type.value,
                 "status": status.value,
-                "order_time": now,
+                "order_time": str(now),
                 "remarks": remarks,
             }
         )
