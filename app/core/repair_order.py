@@ -1,8 +1,11 @@
 from ..crud.repair_order import RepairOrderService
 from ..crud.repair_assignment import RepairAssignmentService
-from typing import Optional
+from ..crud.repair_log import RepairLogService
+from ..crud.material import MaterialService
+from ..crud.user import UserService
+from typing import Optional, List
 import random
-from ..models.repair import RepairAssignment
+from ..models.repair import RepairAssignment, RepairLog, Material
 from ..models.enums import RepairStatus
 
 
@@ -140,3 +143,92 @@ def accept_order(assignment_id: int,
             raise RuntimeError(f"Reassignment failed: {str(e)}")
 
     return updated_assignment
+
+
+def calculate_material_fee(
+    repair_order_id: int,
+    repair_log_service: 'RepairLogService',
+    material_service: 'MaterialService'
+) -> float:
+    """
+    Calculate the total material fee for a specific repair order.
+    The material fee is the sum of total prices of all materials associated with
+    all repair logs under the given repair order.
+
+    Args:
+        repair_order_id (int): ID of the repair order to calculate the material fee for.
+        repair_log_service (RepairLogService): Service for handling repair log operations.
+        material_service (MaterialService): Service for handling material operations.
+
+    Returns:
+        float: The total material fee for the repair order. Returns 0.0 if no materials are found.
+
+    Raises:
+        ValueError: If the repair order ID is invalid or not found (optional, depending on implementation).
+    """
+    # Step 1: Fetch all repair logs associated with the repair order
+    repair_logs: List[RepairLog] = repair_log_service.get_repair_logs_by_order_id(
+        repair_order_id)
+
+    if not repair_logs:
+        return 0.0  # Return 0.0 if no repair logs are found for the order
+
+    total_material_fee = 0.0
+
+    # Step 2: Iterate through each repair log to fetch associated materials
+    for log in repair_logs:
+        # Step 3: Fetch all materials for the current repair log
+        materials: List[Material] = material_service.get_materials_by_log_id(
+            log.log_id)
+
+        # Step 4: Calculate the total price for materials in this repair log
+        for material in materials:
+            # Uses the property total_price = quantity * unit_price
+            total_material_fee += material.total_price
+
+    return total_material_fee
+
+
+def calculate_labor_fee(
+    repair_order_id: int,
+    repair_assignment_service: 'RepairAssignmentService',
+    user_service: 'UserService'
+) -> float:
+    """
+    Calculate the total labor fee for a specific repair order.
+    The labor fee is the sum of (time_worked * hourly_rate) for all assignments
+    associated with the given repair order.
+
+    Args:
+        repair_order_id (int): ID of the repair order to calculate the labor fee for.
+        repair_assignment_service (RepairAssignmentService): Service for handling repair assignment operations.
+        user_service (UserService): Service for handling user (staff) operations to get hourly rate.
+
+    Returns:
+        float: The total labor fee for the repair order. Returns 0.0 if no assignments are found
+               or if time_worked/hourly_rate data is missing.
+
+    Raises:
+        ValueError: If the repair order ID is invalid or not found (optional, depending on implementation).
+    """
+    # Step 1: Fetch all repair assignments associated with the repair order
+    assignments: List[RepairAssignment] = repair_assignment_service.get_assignments_by_order_id(
+        repair_order_id)
+
+    if not assignments:
+        return 0.0  # Return 0.0 if no assignments are found for the order
+
+    total_labor_fee = 0.0
+
+    # Step 2: Iterate through each assignment to calculate labor fee
+    for assignment in assignments:
+        # Only calculate fee if time_worked is available
+        if assignment.time_worked is not None and assignment.time_worked > 0:
+            # Step 3: Fetch staff details to get hourly rate
+            staff = user_service.get_user_by_id(assignment.staff_id)
+            if staff and staff.discriminator == "staff" and staff.hourly_rate is not None:
+                # Step 4: Calculate fee for this assignment (time_worked * hourly_rate)
+                assignment_fee = assignment.time_worked * staff.hourly_rate
+                total_labor_fee += assignment_fee
+
+    return total_labor_fee
