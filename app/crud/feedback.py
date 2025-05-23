@@ -107,6 +107,38 @@ class FeedbackService:
             for row in rows
         ]
 
+    def get_negative_feedbacks(self, max_rating: int) -> List[Feedback]:
+        """
+        Retrieve all feedback with a rating less than or equal to the specified maximum (negative feedback).
+
+        Args:
+            max_rating (int): Maximum rating to consider as negative feedback (e.g., 2 for ratings <= 2).
+
+        Returns:
+            List[Feedback]: List of feedback objects with rating <= max_rating.
+        """
+        rows = self.db.select_data(
+            table_name="feedback",
+            columns=["feedback_id", "customer_id", "order_id",
+                     "log_id", "rating", "comments", "feedback_time"],
+            where=f"rating <= {max_rating}",
+            order_by="feedback_time DESC"
+        )
+        if not rows:
+            return []
+        return [
+            Feedback(
+                feedback_id=row[0],
+                customer_id=row[1],
+                order_id=row[2],
+                log_id=row[3] if row[3] != 0 else None,
+                rating=row[4],
+                comments=row[5] if row[5] else None,
+                feedback_time=row[6] if row[6] else None
+            )
+            for row in rows
+        ]
+
     def _object_to_dict(self, obj: Any) -> Dict[str, Any]:
         """
         Convert an object to a dict for audit logging.
