@@ -18,15 +18,29 @@ class AuditLogService:
             old_data (dict, optional): Data before the operation.
             new_data (dict, optional): Data after the operation.
         """
+        from datetime import datetime
+        def serialize_datetimes(obj):
+            if isinstance(obj, dict):
+                return {k: serialize_datetimes(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [serialize_datetimes(i) for i in obj]
+            elif isinstance(obj, datetime):
+                return obj.isoformat()
+            else:
+                return obj
+
+        # Process datetime objects
+        old_data_serialized = serialize_datetimes(old_data) if old_data else None
+        new_data_serialized = serialize_datetimes(new_data) if new_data else None
+
+        # Create audit log entry
         audit_log = AuditLog(
             table_name=table_name,
             record_id=record_id,
             operation=operation,
-            old_data=json.dumps(old_data) if old_data else None,
-            new_data=json.dumps(new_data) if new_data else None
+            old_data=json.dumps(old_data_serialized) if old_data_serialized else None,
+            new_data=json.dumps(new_data_serialized) if new_data_serialized else None
         )
-        
-        from datetime import datetime
 
         # Get the current date and time in the format SQL expects
         current_datetime = datetime.now()

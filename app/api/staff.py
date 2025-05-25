@@ -316,11 +316,14 @@ def generate_repair_order(
             detail=f"Failed to generate repair order: {str(e)}"
         )
 
+# Temp Fix
+class NewStatus(BaseModel):
+    new_status: str  # The new status to set for the repair request
 
 @router.post("/repair-request/{request_id}/update-status", response_model=Dict)
 def update_repair_request_status(
     request_id: int,
-    new_status: str,  # The new status to set for the repair request
+    new_status: NewStatus,  # The new status to set for the repair request
     current_user: User = Depends(get_current_user),
     repair_request_service: RepairRequestService = Depends(
         get_repair_request_service)
@@ -350,6 +353,7 @@ def update_repair_request_status(
         )
 
     try:
+        new_status = new_status.new_status
         # Update the repair request status using the service
         updated_request = repair_request_service.update_repair_request_status(
             request_id=request_id,
@@ -372,9 +376,11 @@ def update_repair_request_status(
             "request_time": updated_request.request_time
         }
     except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update repair request status: {str(e)}"
+            detail=f"Failed to update repair request status: {str(e)}\n{tb}"
         )
 
 
