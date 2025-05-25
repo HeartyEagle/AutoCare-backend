@@ -59,7 +59,8 @@ def assign_order(order_id: int,
     # Create a new assignment for the selected staff
     assignment = repair_assignment_service.create_repair_assignment(
         order_id=order_id,
-        staff_id=staff_id
+        staff_id=staff_id,
+        status="pending"
     )
 
     if not assignment:

@@ -1,5 +1,5 @@
 # schemas/staff.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 from ..models.enums import *
@@ -55,3 +55,12 @@ class RepairUpdate(BaseModel):
 class RepairOrderGenerate(BaseModel):
     required_staff_type: StaffJobType
     remarks: Optional[str] = None
+
+
+class AssignmentTimeWorkedUpdate(BaseModel):
+    assignment_id: int
+    time_worked: float = Field(..., ge=0, description="worked time in hours")
+
+
+class FinishOrderRequest(BaseModel):
+    time_list: List[AssignmentTimeWorkedUpdate]

@@ -608,6 +608,71 @@ def update_repair_progress(
         )
 
 
+@router.post("/repair-order/{order_id}/finish", response_model=Dict)
+def finish_repair_order(
+    order_id: int,
+    body: FinishOrderRequest,
+    current_user: User = Depends(get_current_user),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Complete a repair order:
+    - Set repair order status to COMPLETED
+    - Update time_worked for each assignment on this order.
+
+    Only staff/admin can use.
+
+    body: { "time_list": [ {"assignment_id": X, "time_worked": Y}, ... ] }
+    """
+    # 1. 权限检查
+    if current_user.discriminator not in ["staff", "admin"]:
+        raise HTTPException(
+            status_code=403, detail="Only staff or admin can finish an order")
+
+    # 2. 查找并校验订单
+    repair_order = repair_order_service.get_repair_order_by_id(order_id)
+    if not repair_order:
+        raise HTTPException(
+            status_code=404, detail=f"Repair order {order_id} not found")
+    if repair_order.status == RepairStatus.COMPLETED:
+        raise HTTPException(
+            status_code=400, detail=f"Repair order {order_id} is already completed")
+
+    # 3. 更新所有分配的工时
+    updated_assignments = []
+    for update in body.time_list:
+        assignment = repair_assignment_service.update_repair_assignment_time(
+            assignment_id=update.assignment_id,
+            time_worked=update.time_worked
+        )
+        if not assignment:
+            raise HTTPException(
+                status_code=404, detail=f"Assignment {update.assignment_id} not found or update failed")
+        updated_assignments.append({
+            "assignment_id": assignment.assignment_id,
+            "staff_id": assignment.staff_id,
+            "new_time_worked": assignment.time_worked
+        })
+
+    # 4. 更新维修单状态为已完成
+    updated_order = repair_order_service.update_repair_order_status(
+        order_id, RepairStatus.COMPLETED)
+    if not updated_order:
+        raise HTTPException(
+            status_code=500, detail=f"Failed to update order status for order {order_id}")
+
+    return {
+        "status": "success",
+        "message": f"Repair order {order_id} marked as COMPLETED, assignments' time updated.",
+        "order_id": order_id,
+        "updated_order_status": updated_order.status.value if updated_order.status else None,
+        "assignment_time_updates": updated_assignments
+    }
+
+
 @router.get("/{staff_id}/income", response_model=Dict)
 def get_staff_income(
     staff_id: int,
