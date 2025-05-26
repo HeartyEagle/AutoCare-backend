@@ -109,6 +109,7 @@ def accept_order(assignment_id: int,
     new_status = "accepted" if accept else "rejected"
     updated_assignment = repair_assignment_service.update_assignment_status(
         assignment_id=assignment_id,
+        staff_id=staff_id,
         new_status=new_status
     )
     if not updated_assignment:
@@ -118,9 +119,9 @@ def accept_order(assignment_id: int,
     # If accepted, update the repair order status to IN_PROGRESS
     if accept:
         order_id = assignment.order_id
-        success = repair_order_service.update_order_status(
+        success = repair_order_service.update_repair_order_status(
             order_id=order_id,
-            new_status=RepairStatus.IN_PROGRESS
+            status=RepairStatus.IN_PROGRESS
         )
         if not success:
             raise RuntimeError(

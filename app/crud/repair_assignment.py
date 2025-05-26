@@ -64,7 +64,7 @@ class RepairAssignmentService:
             Updated RepairAssignment object or None if update fails.
         """
         # Validate assignment exists and belongs to the staff
-        assignment = self.get_assignment_by_id(assignment_id)
+        assignment = self.get_repair_assignment_by_id(assignment_id)
         if not assignment or assignment.staff_id != staff_id:
             return None
 
@@ -92,17 +92,17 @@ class RepairAssignmentService:
             new_data={"status": new_status}
         )
 
-        # If rejected, trigger reassignment
-        if new_status == "rejected":
-            new_assignment = self.reassign_order(
-                assignment.order_id, exclude_staff_id=staff_id)
-            if new_assignment:
-                self.audit_log_service.log_audit_event(
-                    table_name="repair_assignment",
-                    record_id=new_assignment.assignment_id,
-                    operation=OperationType.INSERT,
-                    new_data=self._object_to_dict(new_assignment)
-                )
+        # # If rejected, trigger reassignment
+        # if new_status == "rejected":
+        #     new_assignment = self.reassign_order(
+        #         assignment.order_id, exclude_staff_id=staff_id)
+        #     if new_assignment:
+        #         self.audit_log_service.log_audit_event(
+        #             table_name="repair_assignment",
+        #             record_id=new_assignment.assignment_id,
+        #             operation=OperationType.INSERT,
+        #             new_data=self._object_to_dict(new_assignment)
+        #         )
 
         return assignment
 
