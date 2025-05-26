@@ -64,3 +64,10 @@ class AssignmentTimeWorkedUpdate(BaseModel):
 
 class FinishOrderRequest(BaseModel):
     time_list: List[AssignmentTimeWorkedUpdate]
+
+
+class StaffProfileUpdate(BaseModel):
+    name: Optional[str] = Field(None, description="员工姓名")
+    email: Optional[str] = Field(None, description="邮箱")
+    address: Optional[str] = Field(None, description="地址")
+    phone: Optional[str] = Field(None, description="电话")

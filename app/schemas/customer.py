@@ -156,3 +156,10 @@ class CustomerFeedbacksResponse(BaseModel):
     customer_id: int = 0
     order_id: int = 0
     feedbacks: List[Dict[str, Any]] = []
+
+
+class CustomerProfileUpdate(BaseModel):
+    name: Optional[str] = Field(None, description="name")
+    email: Optional[str] = Field(None, description="email")
+    address: Optional[str] = Field(None, description="address")
+    phone: Optional[str] = Field(None, description="phone")

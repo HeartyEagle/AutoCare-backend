@@ -155,8 +155,7 @@ class RepairAssignmentService:
 
     def get_repair_assignment_by_id(
         self,
-        order_id: int,
-        staff_id: int
+        assignment_id: int
     ) -> Optional[RepairAssignment]:
         """
         Get a repair assignment by composite key (order_id, staff_id).
@@ -165,7 +164,7 @@ class RepairAssignmentService:
             table_name="repair_assignment",
             columns=["assignment_id", "order_id",
                      "staff_id", "status", "time_worked"],
-            where=f"order_id = {order_id} AND staff_id = {staff_id}",
+            where=f"assignment_id = {assignment_id}",
         )
         if not rows:
             return None

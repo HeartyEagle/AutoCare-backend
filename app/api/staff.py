@@ -59,6 +59,52 @@ def get_staff_profile(
     )
 
 
+@router.post("/{user_id}/update-profile", response_model=Dict)
+def update_staff_profile(
+    user_id: int,
+    info: StaffProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    修改员工（staff）个人信息。员工只能改自己的，admin 可以改所有员工的信息。
+    """
+    if current_user.discriminator != "admin" and (current_user.discriminator != "staff" or current_user.user_id != user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="not authorized to update this staff member's profile"
+        )
+
+    user = user_service.get_user_by_id(user_id)
+    if not user or user.discriminator != "staff":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="staff member not found"
+        )
+
+    updated = user_service.update_user_info(
+        user_id=user_id,
+        name=info.name if info.name is not None else user.name,
+        email=info.email if info.email is not None else user.email,
+        address=info.address if info.address is not None else user.address,
+        phone=info.phone if info.phone is not None else user.phone
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="failed to update staff member information"
+        )
+    return {
+        "status": "success",
+        "message": "Staff profile updated successfully",
+        "user_id": user_id,
+        "name": updated.name,
+        "email": updated.email,
+        "address": updated.address,
+        "phone": updated.phone
+    }
+
+
 @router.get("/{staff_id}/repair-orders", response_model=StaffRepairOrdersResponse)
 def get_staff_repair_orders(
     staff_id: int,

@@ -125,6 +125,53 @@ def get_customer_profile(
     )
 
 
+@router.post("/{customer_id}/update-profile", response_model=Dict)
+def update_customer_profile(
+    customer_id: int,
+    info: CustomerProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    修改客户（customer）个人信息。客户只能改自己的，admin 可以改任何客户信息。
+    """
+    # 权限校验
+    if current_user.discriminator != "admin" and (current_user.discriminator != "customer" or current_user.user_id != customer_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this customer's profile"
+        )
+
+    user = user_service.get_user_by_id(customer_id)
+    if not user or user.discriminator != "customer":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Customer not found"
+        )
+
+    updated = user_service.update_user_info(
+        user_id=customer_id,
+        name=info.name if info.name is not None else user.name,
+        email=info.email if info.email is not None else user.email,
+        address=info.address if info.address is not None else user.address,
+        phone=info.phone if info.phone is not None else user.phone
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update customer information"
+        )
+    return {
+        "status": "success",
+        "message": "Customer profile updated successfully",
+        "user_id": customer_id,
+        "name": updated.name,
+        "email": updated.email,
+        "address": updated.address,
+        "phone": updated.phone
+    }
+
+
 @router.get("/{customer_id}/vehicles", response_model=CustomerVehiclesResponse)
 def get_customer_vehicles(
     customer_id: int,
