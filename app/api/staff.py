@@ -709,6 +709,59 @@ def update_repair_progress(
         )
 
 
+@router.get("/repair-order/{order_id}/logs", response_model=Dict)
+def get_repair_logs_for_order(
+    order_id: int,
+    current_user: User = Depends(get_current_user),
+    repair_log_service: RepairLogService = Depends(get_repair_log_service),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Get all repair logs for a specific repair order.
+    Staff can only access logs if they are assigned to this order. Admin can access any order's logs.
+    """
+    # 权限校验
+    if current_user.discriminator == "staff":
+        assignments = repair_assignment_service.get_assignments_by_order_id(
+            order_id)
+        if not any(a.staff_id == current_user.user_id for a in assignments):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Unauthorized: Staff can only view logs for orders assigned to them"
+            )
+    elif current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only staff (assigned) or admin can access logs"
+        )
+
+    logs = repair_log_service.get_repair_logs_by_order_id(order_id)
+    if not logs:
+        return {
+            "status": "success_no_data",
+            "message": "No repair logs found for this order.",
+            "order_id": order_id,
+            "logs": []
+        }
+
+    # 可根据实际情况增减返回字段
+    return {
+        "status": "success",
+        "message": "Repair logs retrieved successfully.",
+        "order_id": order_id,
+        "logs": [
+            {
+                "log_id": log.log_id,
+                "order_id": log.order_id,
+                "staff_id": log.staff_id,
+                "log_time": log.log_time,
+                "log_message": log.log_message
+            } for log in logs
+        ]
+    }
+
+
 @router.post("/repair-order/{order_id}/finish", response_model=Dict)
 def finish_repair_order(
     order_id: int,
