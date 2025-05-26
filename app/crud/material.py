@@ -29,8 +29,7 @@ class MaterialService:
             name=name,
             quantity=quantity,
             unit_price=unit_price,
-            remarks=remarks,
-            created_at=now  # 假设你的 Material 模型有一个 created_at 字段
+            remarks=remarks
         )
 
         # 插入
