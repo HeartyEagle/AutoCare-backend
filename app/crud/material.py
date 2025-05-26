@@ -23,7 +23,6 @@ class MaterialService:
         """
         Create a new material entry for a repair log.
         """
-        now = str(datetime.now())
         material = Material(
             log_id=log_id,
             name=name,
@@ -40,8 +39,7 @@ class MaterialService:
                 "name":        material.name,
                 "quantity":    material.quantity,
                 "unit_price":  material.unit_price,
-                "remarks":     material.remarks,
-                "created_at":  material.created_at,
+                "remarks":     material.remarks
             }
         )
 
