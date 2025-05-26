@@ -317,8 +317,11 @@ def generate_repair_order(
         )
 
 # Temp Fix
+
+
 class NewStatus(BaseModel):
     new_status: str  # The new status to set for the repair request
+
 
 @router.post("/repair-request/{request_id}/update-status", response_model=Dict)
 def update_repair_request_status(
@@ -382,6 +385,52 @@ def update_repair_request_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update repair request status: {str(e)}\n{tb}"
         )
+
+
+@router.get("/{staff_id}/assignments", response_model=Dict)
+def get_assignments_for_staff(
+    staff_id: int,
+    current_user: User = Depends(get_current_user),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Get all repair assignments associated with a specific staff member.
+    Staff members can only access their own assignments, while admins can access any staff member's assignments.
+    """
+    if current_user.discriminator not in ["staff", "admin"] or \
+       (current_user.discriminator == "staff" and current_user.user_id != staff_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized to view this staff member's assignments"
+        )
+
+    assignments = repair_assignment_service.get_assignments_by_staff_id(
+        staff_id)
+    if not assignments:
+        return {
+            "status": "success_no_data",
+            "message": "No assignments found for this staff member.",
+            "staff_id": staff_id,
+            "assignments": []
+        }
+
+    # You can sort by status or time, if desired:
+    assignments_sorted = sorted(assignments, key=lambda a: a.status)
+
+    return {
+        "status": "success",
+        "message": "Assignments retrieved successfully.",
+        "staff_id": staff_id,
+        "assignments": [
+            {
+                "assignment_id": a.assignment_id,
+                "order_id": a.order_id,
+                "status": a.status,
+                "time_worked": a.time_worked
+            } for a in assignments_sorted
+        ]
+    }
 
 
 @router.post("/{staff_id}/assignments/{assignment_id}/{action}", response_model=Dict)
