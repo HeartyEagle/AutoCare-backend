@@ -13,6 +13,8 @@ class AdminUserResponse(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     address: Optional[str] = None
+    jobtype: Optional[StaffJobType] = None
+    hourly_rate: Optional[float] = None
 
 
 class AdminUsersResponse(BaseModel):
@@ -35,7 +37,7 @@ class AdminStaffResponse(BaseModel):
 class AdminStaffListResponse(BaseModel):
     status: str
     message: Optional[str] = None
-    staff: Optional[List[dict]] = None
+    staff: Optional[List[AdminStaffResponse]] = None
 
 
 class AdminVehicleResponse(BaseModel):
