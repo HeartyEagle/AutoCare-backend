@@ -63,8 +63,8 @@ def get_all_users(
             "email": user.email,
             "phone": user.phone,
             "address": user.address,
-            "jobtype": user.jobtype.value if user.jobtype else None,
-            "hourly_rate": user.hourly_rate if user.hourly_rate else None
+            "jobtype": user.jobtype.value if user.discriminator == "staff" else None,
+            "hourly_rate": user.hourly_rate if user.discriminator == "staff" else None
         } for user in users]
     )
 
