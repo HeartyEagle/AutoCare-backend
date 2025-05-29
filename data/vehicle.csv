@@ -1,0 +1,11 @@
+vehicle_id,customer_id,license_plate,brand,model,type,color,remarks
+1,1,ABC-1234,Toyota,Camry,Sedan,Blue,Regular maintenance
+2,1,XYZ-5678,Honda,Civic,Sedan,Red,Minor scratches
+3,4,LMN-9012,Ford,Focus,Hatchback,Black,No remarks
+4,4,PQR-3456,Hyundai,Tucson,SUV,White,Needs alignment
+5,6,DEF-7890,Nissan,Altima,Sedan,Grey,Old tires
+6,6,GHI-2345,Volkswagen,Golf,Hatchback,Green,Minor dent
+7,8,JKL-6789,BMW,X3,SUV,Silver,Engine check
+8,10,MNO-0123,Kia,Sorento,SUV,Blue,Brake issues
+9,12,STU-4567,Chevrolet,Equinox,SUV,Black,Transmission noise
+10,14,VWX-8901,Mercedes-Benz,C-Class,Sedan,Red,Regular checkup

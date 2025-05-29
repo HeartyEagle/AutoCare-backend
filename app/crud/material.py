@@ -64,7 +64,7 @@ class MaterialService:
             table_name="material",
             columns=[
                 "material_id", "log_id", "name",
-                "quantity", "unit_price", "remarks", "created_at"
+                "quantity", "unit_price", "remarks"
             ],
             where=f"material_id = {material_id}",
         )
@@ -78,8 +78,7 @@ class MaterialService:
             name=r[2],
             quantity=r[3],
             unit_price=r[4],
-            remarks=r[5],
-            created_at=r[6]
+            remarks=r[5]
         )
 
     def get_materials_by_log_id(self, log_id: int) -> List[Material]:
@@ -90,7 +89,7 @@ class MaterialService:
             table_name="material",
             columns=[
                 "material_id", "log_id", "name",
-                "quantity", "unit_price", "remarks", "created_at"
+                "quantity", "unit_price", "remarks"
             ],
             where=f"log_id = {log_id}",
             order_by="material_id ASC"
@@ -102,8 +101,7 @@ class MaterialService:
                 name=r[2],
                 quantity=r[3],
                 unit_price=r[4],
-                remarks=r[5],
-                created_at=r[6]
+                remarks=r[5]
             )
             for r in rows
         ]

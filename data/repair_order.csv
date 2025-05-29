@@ -1,0 +1,8 @@
+order_id,vehicle_id,customer_id,request_id,required_staff_type,status,order_time,finish_time,remarks
+1,1,1,1,Auto Repair Worker,Completed,2023-09-01 11:00:00,2023-09-05 16:00:00,Engine fixed
+2,2,1,2,Auto Repair Worker,In Progress,2023-09-02 15:00:00,,Brake pad issue
+3,4,4,4,Auto Repair Worker,Completed,2023-09-04 12:00:00,2023-09-08 17:00:00,Alignment done
+4,6,6,6,Paint Worker,In Progress,2023-09-06 17:00:00,,Dent repair started
+5,7,8,7,Auto Repair Worker,Completed,2023-09-07 09:00:00,2023-09-10 14:00:00,Engine diagnostics complete
+6,9,12,9,Auto Repair Worker,In Progress,2023-09-09 13:00:00,,Transmission under review
+7,2,1,12,Auto Electrician,Completed,2023-09-12 15:00:00,2023-09-15 11:00:00,Battery replaced

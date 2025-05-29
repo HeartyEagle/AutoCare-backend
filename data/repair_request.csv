@@ -1,0 +1,13 @@
+request_id,vehicle_id,customer_id,description,status,request_time
+1,1,1,Engine noise issue,order_created,2023-09-01 10:00:00
+2,2,1,Brake pad replacement,order_created,2023-09-02 14:30:00
+3,3,4,Tire puncture,pending,2023-09-03 09:15:00
+4,4,4,Alignment needed,order_created,2023-09-04 11:00:00
+5,5,6,Oil change required,pending,2023-09-05 13:45:00
+6,6,6,Dent repair,order_created,2023-09-06 16:20:00
+7,7,8,Engine diagnostics,order_created,2023-09-07 08:30:00
+8,8,10,Brake squeaking,pending,2023-09-08 10:10:00
+9,9,12,Transmission issue,order_created,2023-09-09 12:00:00
+10,10,14,General checkup,pending,2023-09-10 15:30:00
+11,1,1,Follow-up on engine,pending,2023-09-11 09:00:00
+12,2,1,Battery replacement,order_created,2023-09-12 14:00:00

@@ -1,0 +1,7 @@
+feedback_id,customer_id,order_id,log_id,rating,comments,feedback_time
+1,1,1,,5,Excellent service on engine repair!,2023-09-05 17:00:00
+2,1,7,,4,Good job on battery replacement,2023-09-15 12:00:00
+3,4,3,,5,Alignment was perfect,2023-09-08 18:00:00
+4,8,5,,4,Engine diagnostics were thorough,2023-09-10 15:00:00
+5,1,2,,3,Brake repair taking too long,2023-09-03 10:00:00
+6,6,4,,4,Dent repair looks good so far,2023-09-07 10:00:00

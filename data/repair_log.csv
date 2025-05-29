@@ -1,0 +1,14 @@
+log_id,order_id,staff_id,log_time,log_message
+1,1,2,2023-09-01 12:00:00,Started engine diagnostics
+2,1,5,2023-09-03 10:00:00,Fixed wiring issue
+3,1,2,2023-09-05 15:00:00,Completed engine repair
+4,2,7,2023-09-02 16:00:00,Started brake pad replacement
+5,3,2,2023-09-04 13:00:00,Began alignment
+6,3,2,2023-09-08 16:00:00,Completed alignment
+7,4,9,2023-09-06 18:00:00,Started dent repair
+8,5,7,2023-09-07 10:00:00,Engine diagnostics started
+9,5,11,2023-09-09 11:00:00,Electrical check completed
+10,5,7,2023-09-10 13:00:00,Engine repair finished
+11,6,13,2023-09-09 14:00:00,Transmission inspection started
+12,7,5,2023-09-12 16:00:00,Battery replacement started
+13,7,11,2023-09-15 10:00:00,Battery replacement completed

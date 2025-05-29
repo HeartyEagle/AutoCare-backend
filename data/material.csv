@@ -1,0 +1,13 @@
+material_id,log_id,name,quantity,unit_price,remarks
+1,1,Engine Oil,2,30.00,High grade
+2,2,Wire Set,1,15.00,Standard quality
+3,3,Oil Filter,1,10.00,Replacement part
+4,4,Brake Pads,2,25.00,Standard quality
+5,6,Alignment Kit,1,50.00,Professional grade
+6,7,Paint Can,1,20.00,For dent repair
+7,8,Engine Sensor,1,75.00,Critical component
+8,9,Fuse Set,5,2.00,Standard fuses
+9,10,Gasket,2,10.00,Engine repair
+10,11,Transmission Fluid,1,35.00,High quality
+11,12,Battery,1,120.00,12V battery
+12,13,Battery Terminal,2,5.00,Standard terminals

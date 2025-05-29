@@ -1,0 +1,16 @@
+user_id,name,username,password,phone,email,address,discriminator
+1,John Doe,johndoe,$2b$12$T00NUva7JOe7mrNEDeGBoOcP1aHFa/yoqRl2P3sWkekKyMgc91iL2,1234567890,john@example.com,123 Main St,customer
+2,Jane Smith,janesmith,$2b$12$STy8.cUOOYRJ.JObf05oruAGGATnK9.ClujrGiG8gtU0SWxjbxuHe,987654321,jane@example.com,456 Oak Ave,staff
+3,Admin User,adminuser,$2b$12$ztlHl7fCByrIomaZXCaNwuiksjPlCRv0m1OF9WcKGacfp9.fEIUcO,1122334455,admin@example.com,789 Pine Rd,admin
+4,Mike Johnson,mikej,$2b$12$istwrxB9NPynIQcD4snPZeG5J8sIKbFMP4iJNqMa5PURUTyPUorP6,2233445566,mike@example.com,321 Elm St,customer
+5,Tom Brown,tomb,$2b$12$y99o4JybwA7lMJOTSUUzA.WWgzc7vkxM9qcFH/namQP/vAzfN6Lcy,3344556677,tom@example.com,654 Cedar Ln,staff
+6,Alice Green,aliceg,$2b$12$fi4E4ILGy/QY3h0uhp5TluegxDfb.IeTpWeyfaNDyAJGhXEIu3/yy,4455667788,alice@example.com,987 Birch Rd,customer
+7,Bob Wilson,bobw,$2b$12$oEUjCNJu20uJo15Hm/7NaOIKawDm3rj0dveejH1N4TNIoi.GtnuRq,5566778899,bob@example.com,147 Maple Dr,staff
+8,Emma Davis,emmad,$2b$12$q5z6CXMNzg3isqyFXqqVFeBAsjrY01fx/LGGLwcs38ZYHcV/IxhrK,6677889900,emma@example.com,258 Willow St,customer
+9,David Clark,davidc,$2b$12$/kTnkw3E9fijQ1Fa31MRZuCu915xzgs0j.aZu41UTZzdiB918RP2.,7788990011,david@example.com,369 Spruce Ave,staff
+10,Lisa White,lisaw,$2b$12$AWCJJTQh8chriRZaFYFt3OdhB2tQCjo.ESshU/Irond0MWcyA8yEO,8899001122,lisa@example.com,741 Ash Ln,customer
+11,Mark Taylor,markt,$2b$12$h7dGR0tuHEFJSNXuzPOIXeHgZj/rSaS3gR6aTStA/Yyr63U9dd1Vi,9900112233,mark@example.com,852 Poplar Rd,staff
+12,Sarah Lee,sarahl,$2b$12$p8xhQfwle7tV1uTS12sS7OzOHKyXVXYtiIr6ZNhXJfDW/Cu4GNKDy,1011123344,sarah@example.com,963 Linden St,customer
+13,James Miller,jamesm,$2b$12$K04IW0XBUwCU0.SizcByUO9eW6ISNXmEv7vkXlYODJqEjb9IJ45Ny,1122335566,james@example.com,159 Cherry Dr,staff
+14,Anna Harris,annah,$2b$12$t7FqeuJ4us/AgoWtJQWneeR/vH8DD5Gp/MYfFWp3W1uf.OxeYPvlC,2233446677,anna@example.com,267 Magnolia Ave,customer
+15,Chris Evans,chrise,$2b$12$0mBEmK6QCXOH0FS/4skA7ukPY6x9RL6lBnfPSp9Xyw.LDk7zW7BLe,3344557788,chris@example.com,378 Laurel Rd,staff

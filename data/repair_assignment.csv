@@ -1,0 +1,12 @@
+assignment_id,order_id,staff_id,status,time_worked
+1,1,2,accepted,5.5
+2,1,5,accepted,3.0
+3,2,7,accepted,4.0
+4,3,2,accepted,6.0
+5,3,9,rejected,
+6,4,9,accepted,2.5
+7,5,7,accepted,7.0
+8,5,11,accepted,3.5
+9,6,13,accepted,5.0
+10,7,5,accepted,2.0
+11,7,11,accepted,1.5
