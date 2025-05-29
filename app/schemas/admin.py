@@ -106,10 +106,10 @@ class AdminCreate(BaseModel):
 
 
 class AdminUpdateUserProfileReq(BaseModel):
-    name: Optional[str]
-    email: Optional[str]
-    address: Optional[str]
-    phone: Optional[str]
+    name: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
     # staff only fields
-    jobtype: Optional[StaffJobType]
-    hourly_rate: Optional[float]
+    jobtype: Optional[StaffJobType] = None
+    hourly_rate: Optional[float] = None

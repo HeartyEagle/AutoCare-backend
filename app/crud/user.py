@@ -6,6 +6,7 @@ from ..core.security import get_password_hash
 from ..schemas.auth import UserCreate, StaffCreate
 from typing import Optional, Dict, Any, List
 
+
 class UserService:
     def __init__(self, db: Database):
         self.db = db
@@ -14,7 +15,8 @@ class UserService:
     def get_user_by_username(self, username: str) -> Optional[User]:
         rows = self.db.select_data(
             table_name="user",
-            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
+            columns=["user_id", "name", "username", "password",
+                     "phone", "email", "address", "discriminator"],
             where=f"username = '{username}'",
             limit=1
         )
@@ -25,7 +27,8 @@ class UserService:
         print(type(user_id))
         rows = self.db.select_data(
             table_name="user",
-            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"],
+            columns=["user_id", "name", "username", "password",
+                     "phone", "email", "address", "discriminator"],
             where=f"user_id = {user_id}",
             limit=1
         )
@@ -34,7 +37,8 @@ class UserService:
     def get_all_users(self) -> List[User]:
         rows = self.db.select_data(
             table_name="user",
-            columns=["user_id", "name", "username", "password", "phone", "email", "address", "discriminator"]
+            columns=["user_id", "name", "username", "password",
+                     "phone", "email", "address", "discriminator"]
         )
         return [self._map_user_row_to_object(row) for row in rows]
 
@@ -74,9 +78,9 @@ class UserService:
             email=user.email,
             address=user.address
         )
-        
+
         print(customer.asdict(only_parent=True))
-        
+
         self.db.insert_data(
             table_name="user",
             data=customer.asdict(only_parent=True)
@@ -84,17 +88,17 @@ class UserService:
         row = self.db.execute_query("SELECT LAST_INSERT_ID();")
         customer.user_id = int(row[0][0]) if row else None
         customer.customer_id = customer.user_id
-        
+
         self.db.insert_data(table_name="customer", data={
             "customer_id": customer.customer_id
         })
-        
+
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=customer.user_id,
             operation=OperationType.INSERT,
             new_data=customer.asdict()
-            
+
         )
         return customer
 
@@ -115,11 +119,11 @@ class UserService:
         row = self.db.execute_query("SELECT LAST_INSERT_ID();")
         admin.user_id = int(row[0][0]) if row else None
         admin.admin_id = admin.user_id
-        
+
         self.db.insert_data(table_name="admin", data={
             "admin_id": admin.admin_id
         })
-        
+
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=admin.user_id,
@@ -151,7 +155,8 @@ class UserService:
         # Insert into staff details
         self.db.insert_data(
             table_name="staff",
-            data={"staff_id": staff.staff_id, "jobtype": staff.jobtype.value if staff.jobtype else None, "hourly_rate": staff.hourly_rate}
+            data={"staff_id": staff.staff_id, "jobtype": staff.jobtype.value if staff.jobtype else None,
+                  "hourly_rate": staff.hourly_rate}
         )
         self.audit_log_service.log_audit_event(
             table_name="user",
@@ -167,14 +172,14 @@ class UserService:
             return None
         old = user.asdict()
         user.name, user.email, user.address, user.phone = name, email, address, phone
-        
+
         self.db.update_data(table_name="user", data={
             "name": user.name,
             "email": user.email,
             "address": user.address,
             "phone": user.phone
         }, where=f"user_id = {user_id}")
-        
+
         self.audit_log_service.log_audit_event(
             table_name="user",
             record_id=user_id,
@@ -183,6 +188,42 @@ class UserService:
             new_data=user.asdict()
         )
         return user
+
+    def delete_user(self, user_id: int) -> bool:
+        """
+        删除用户，级联清理子表（admin/staff/customer），自动审计。
+        :param user_id: 用户ID
+        :return: 删除成功返回 True，否则 False
+        """
+        user = self.get_user_by_id(user_id)
+        if not user:
+            return False
+
+        # 清理角色对应子表
+        if user.discriminator == "admin":
+            self.db.delete_data(table_name="admin",
+                                where=f"admin_id = {user_id}")
+        elif user.discriminator == "staff":
+            self.db.delete_data(table_name="staff",
+                                where=f"staff_id = {user_id}")
+        elif user.discriminator == "customer":
+            self.db.delete_data(table_name="customer",
+                                where=f"customer_id = {user_id}")
+
+        # 主user表
+        deleted = self.db.delete_data(
+            table_name="user", where=f"user_id = {user_id}")
+
+        # 审计日志
+        if deleted:
+            self.audit_log_service.log_audit_event(
+                table_name="user",
+                record_id=user_id,
+                operation=OperationType.DELETE,
+                old_data=user.asdict(),
+                new_data=None
+            )
+        return bool(deleted)
 
     def _map_user_row_to_object(self, row: tuple) -> User:
         disc = row[7]
@@ -201,7 +242,8 @@ class UserService:
                 limit=1
             )
             if details:
-                base.update({"staff_id": row[0], "jobtype": StaffJobType(details[0][0]), "hourly_rate": details[0][1] or 0})
+                base.update({"staff_id": row[0], "jobtype": StaffJobType(
+                    details[0][0]), "hourly_rate": details[0][1] or 0})
             return Staff(**base)
         if disc == "customer":
             return Customer(**base)
