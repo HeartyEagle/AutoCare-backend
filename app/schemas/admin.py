@@ -1,5 +1,5 @@
 # schemas/admin.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 from ..models.user import StaffJobType
@@ -74,7 +74,7 @@ class AdminRepairOrdersResponse(BaseModel):
 
 
 class CustomerCreate(BaseModel):
-    discriminator: str = Field("customer", const=True)
+    discriminator: str
     name: str
     username: str
     password: str
@@ -84,7 +84,7 @@ class CustomerCreate(BaseModel):
 
 
 class StaffCreateRequest(BaseModel):
-    discriminator: str = Field("staff", const=True)
+    discriminator: str
     name: str
     username: str
     password: str
@@ -96,7 +96,7 @@ class StaffCreateRequest(BaseModel):
 
 
 class AdminCreate(BaseModel):
-    discriminator: str = Field("admin", const=True)
+    discriminator: str
     name: str
     username: str
     password: str
