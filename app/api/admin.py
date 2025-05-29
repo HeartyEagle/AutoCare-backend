@@ -19,6 +19,7 @@ from ..schemas.admin import *
 from ..schemas.auth import UserCreate, StaffCreate
 from ..models import User
 from dateutil.relativedelta import relativedelta
+import traceback
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -976,8 +977,11 @@ def admin_create_user(
                 hourly_rate=req.hourly_rate
             ))
         except Exception as e:
+            tb = traceback.format_exc()
             raise HTTPException(
-                status_code=400, detail=f"Failed to create staff: {e}")
+                status_code=400,
+                detail=f"Failed to create staff: {str(e)}\nTraceback:\n{tb}"
+            )
         return {
             "status": "success",
             "message": "Staff created successfully",
