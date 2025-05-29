@@ -16,6 +16,7 @@ from ..db.connection import Database
 from ..crud.user import UserService
 from ..core.dependencies import *
 from ..schemas.admin import *
+from ..schemas.auth import UserCreate, StaffCreate
 from ..models import User
 from dateutil.relativedelta import relativedelta
 
@@ -918,3 +919,154 @@ def get_uncompleted_tasks_statistics(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve uncompleted task statistics: {str(e)}"
         )
+
+
+@router.post("/create-user", response_model=Dict)
+def admin_create_user(
+    user_data: dict,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Admin creates a new user (customer/staff/admin).
+    """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can create users"
+        )
+
+    # Dynamic check/dispatch by discriminator
+    discriminator = user_data.get("discriminator")
+    if discriminator == "customer":
+        try:
+            req = CustomerCreate(**user_data)
+            created = user_service.create_customer(UserCreate(
+                name=req.name,
+                username=req.username,
+                password=req.password,
+                phone=req.phone,
+                email=req.email,
+                address=req.address
+            ))
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, detail=f"Failed to create customer: {e}")
+        return {
+            "status": "success",
+            "message": "Customer created successfully",
+            "user_id": created.user_id,
+            "username": created.username,
+            "email": created.email,
+            "discriminator": "customer"
+        }
+    elif discriminator == "staff":
+        try:
+            req = StaffCreateRequest(**user_data)
+            created = user_service.create_staff(StaffCreate(
+                name=req.name,
+                username=req.username,
+                password=req.password,
+                phone=req.phone,
+                email=req.email,
+                address=req.address,
+                jobtype=req.jobtype,
+                hourly_rate=req.hourly_rate
+            ))
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, detail=f"Failed to create staff: {e}")
+        return {
+            "status": "success",
+            "message": "Staff created successfully",
+            "user_id": created.user_id,
+            "username": created.username,
+            "email": created.email,
+            "jobtype": created.jobtype.value if created.jobtype else None,
+            "hourly_rate": created.hourly_rate,
+            "discriminator": "staff"
+        }
+    elif discriminator == "admin":
+        try:
+            req = AdminCreate(**user_data)
+            created = user_service.create_admin(UserCreate(
+                name=req.name,
+                username=req.username,
+                password=req.password,
+                phone=req.phone,
+                email=req.email,
+                address=req.address
+            ))
+        except Exception as e:
+            raise HTTPException(
+                status_code=400, detail=f"Failed to create admin: {e}")
+        return {
+            "status": "success",
+            "message": "Admin created successfully",
+            "user_id": created.user_id,
+            "username": created.username,
+            "email": created.email,
+            "discriminator": "admin"
+        }
+    else:
+        raise HTTPException(
+            status_code=400, detail="discriminator must be one of: customer, staff, admin")
+
+
+@router.post("/update-user-profile/{user_id}", response_model=Dict)
+def admin_update_user_profile(
+    user_id: int,
+    update: AdminUpdateUserProfileReq,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Admin updates any user's profile (base fields: name, email, address, phone; staff: jobtype, hourly_rate).
+    """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can update user profiles"
+        )
+
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    # First, update the basic user fields (name, email, address, phone)
+    updated_user = user_service.update_user_info(
+        user_id=user_id,
+        name=update.name if update.name is not None else user.name,
+        email=update.email if update.email is not None else user.email,
+        address=update.address if update.address is not None else user.address,
+        phone=update.phone if update.phone is not None else user.phone
+    )
+
+    # If staff, update staff details（jobtype/hourly_rate）
+    staff_fields_updated = False
+    if user.discriminator == "staff" and (update.jobtype is not None or update.hourly_rate is not None):
+        # update staff 表
+        staff_data = {}
+        if update.jobtype is not None:
+            staff_data["jobtype"] = update.jobtype.value
+        if update.hourly_rate is not None:
+            staff_data["hourly_rate"] = update.hourly_rate
+        if staff_data:
+            user_service.db.update_data(
+                table_name="staff",
+                data=staff_data,
+                where=f"staff_id = {user.user_id}"
+            )
+            # for audit
+            staff_fields_updated = True
+
+    return {
+        "status": "success",
+        "message": "user info updated" + (", staff additional info also updated" if staff_fields_updated else ""),
+        "user_id": user_id,
+        "updated_fields": update.model_dump(exclude_unset=True),
+        "discriminator": user.discriminator
+    }

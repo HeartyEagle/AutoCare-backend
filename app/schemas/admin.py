@@ -1,7 +1,8 @@
 # schemas/admin.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
+from ..models.user import StaffJobType
 
 
 class AdminUserResponse(BaseModel):
@@ -70,3 +71,45 @@ class AdminRepairOrdersResponse(BaseModel):
     status: str
     message: Optional[str] = None
     repair_orders: Optional[List[AdminRepairOrderResponse]] = None
+
+
+class CustomerCreate(BaseModel):
+    discriminator: str = Field("customer", const=True)
+    name: str
+    username: str
+    password: str
+    phone: str
+    email: str
+    address: Optional[str] = ""
+
+
+class StaffCreateRequest(BaseModel):
+    discriminator: str = Field("staff", const=True)
+    name: str
+    username: str
+    password: str
+    phone: str
+    email: str
+    address: Optional[str] = ""
+    jobtype: StaffJobType
+    hourly_rate: float
+
+
+class AdminCreate(BaseModel):
+    discriminator: str = Field("admin", const=True)
+    name: str
+    username: str
+    password: str
+    phone: str
+    email: str
+    address: Optional[str] = ""
+
+
+class AdminUpdateUserProfileReq(BaseModel):
+    name: Optional[str]
+    email: Optional[str]
+    address: Optional[str]
+    phone: Optional[str]
+    # staff only fields
+    jobtype: Optional[StaffJobType]
+    hourly_rate: Optional[float]
