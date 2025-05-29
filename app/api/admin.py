@@ -20,6 +20,8 @@ from ..schemas.auth import UserCreate, StaffCreate
 from ..models import User
 from dateutil.relativedelta import relativedelta
 import traceback
+from ..core.security import create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from datetime import timedelta
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -1075,4 +1077,36 @@ def admin_update_user_profile(
         "user_id": user_id,
         "updated_fields": update.model_dump(exclude_unset=True),
         "discriminator": user.discriminator
+    }
+
+
+@router.get("/get-token/{user_id}", response_model=Dict)
+def get_user_token_by_id(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    管理员为指定用户（user_id）生成JWT访问token（模拟用户登录）。
+    """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admin can get user token.")
+
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    # 这里直接用sub/role。根据实际需求可加更多字段
+    access_token = create_access_token(
+        data={"sub": str(user.user_id), "role": user.discriminator},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    return {
+        "status": "success",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.user_id,
+        "role": user.discriminator
     }
