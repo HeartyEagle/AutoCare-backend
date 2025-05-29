@@ -35,7 +35,7 @@ class AdminStaffResponse(BaseModel):
 class AdminStaffListResponse(BaseModel):
     status: str
     message: Optional[str] = None
-    staff: Optional[List[AdminStaffResponse]] = None
+    staff: Optional[List[dict]] = None
 
 
 class AdminVehicleResponse(BaseModel):
