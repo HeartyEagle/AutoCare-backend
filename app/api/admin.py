@@ -380,10 +380,12 @@ def get_vehicle_type_statistics(
             "fault_statistics": fault_statistics if vehicle_type else []
         }
     except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to retrieve vehicle type statistics: {str(e)}"
+        tb = traceback.format_exc()
+        detail = (
+            f"Failed to retrieve vehicle type statistics: {str(e)}\nTraceback:\n{tb}"
         )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=detail)
 
 
 @router.get("/statistics/cost-analysis", response_model=Dict)

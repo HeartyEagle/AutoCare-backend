@@ -73,14 +73,20 @@ class VehicleService:
             return None
 
         r = rows[0]
+
+        def safe_enum(cls, val):
+            try:
+                return cls(val) if val is not None else None
+            except ValueError:
+                return None
         return Vehicle(
             vehicle_id=r[0],
             customer_id=r[1],
             license_plate=r[2],
-            brand=VehicleBrand[r[3]] if r[3] is not None else None,
+            brand=safe_enum(VehicleBrand, r[3]),
             model=r[4],
-            type=VehicleType[r[5]] if r[5] is not None else None,
-            color=VehicleColor[r[6]] if r[6] is not None else None,
+            type=safe_enum(VehicleType, r[5]),
+            color=safe_enum(VehicleColor, r[6]),
             remarks=r[7],
             # created_at=r[8]
         )
@@ -98,16 +104,22 @@ class VehicleService:
             where=f"customer_id = {customer_id}",
             order_by="vehicle_id ASC"
         )
-        
+
+        def safe_enum(cls, val):
+            try:
+                return cls(val) if val is not None else None
+            except ValueError:
+                return None
+
         return [
             Vehicle(
                 vehicle_id=r[0],
                 customer_id=r[1],
                 license_plate=r[2],
-                brand=VehicleBrand[r[3]] if r[3] is not None else None,
+                brand=safe_enum(VehicleBrand, r[3]),
                 model=r[4],
-                type=VehicleType[r[5]] if r[5] is not None else None,
-                color=VehicleColor[r[6]] if r[6] is not None else None,
+                type=safe_enum(VehicleType, r[5]),
+                color=safe_enum(VehicleColor, r[6]),
                 remarks=r[7],
                 # created_at=r[8]
             )
@@ -125,15 +137,21 @@ class VehicleService:
                 "brand", "model", "type", "color", "remarks"
             ]
         )
+
+        def safe_enum(cls, val):
+            try:
+                return cls(val) if val is not None else None
+            except Exception:
+                return None
         return [
             Vehicle(
                 vehicle_id=r[0],
                 customer_id=r[1],
                 license_plate=r[2],
-                brand=VehicleBrand[r[3]] if r[3] is not None else None,
+                brand=safe_enum(VehicleBrand, r[3]),
                 model=r[4],
-                type=VehicleType[r[5]] if r[5] is not None else None,
-                color=VehicleColor[r[6]] if r[6] is not None else None,
+                type=safe_enum(VehicleType, r[5]),
+                color=safe_enum(VehicleColor, r[6]),
                 remarks=r[7],
                 # created_at=r[8]
             )
