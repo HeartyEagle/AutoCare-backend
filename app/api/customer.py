@@ -219,6 +219,16 @@ def get_customer_vehicles(
     from ..dynpic.dynpic import DynamicImage
     dyn = DynamicImage(enable_cache=True)
 
+    def _vehicle_keyword(vehicle):
+        # 任意字段为None时都不会报错
+        parts = [
+            vehicle.brand.value if vehicle.brand else "",
+            vehicle.model or "",
+            vehicle.type.value if vehicle.type else "",
+            vehicle.color.value if vehicle.color else ""
+        ]
+        return " ".join([p for p in parts if p]).strip()
+
     return CustomerVehiclesResponse(
         status="success",
         message="Vehicles retrieved successfully",
@@ -227,11 +237,11 @@ def get_customer_vehicles(
         vehicles=[{
             "vehicle_id": vehicle.vehicle_id,
             "license_plate": vehicle.license_plate,
-            "brand": vehicle.brand.value if vehicle.brand else None,
+            "brand": vehicle.brand.value if vehicle.brand else "",
             "model": vehicle.model,
-            "type": vehicle.type.value if vehicle.type else None,
-            "color": vehicle.color.value if vehicle.color else None,
-            "image": dyn.by_keyword(f"{vehicle.brand.value} {vehicle.model} {vehicle.type.value} {vehicle.color.value}"),
+            "type": vehicle.type.value if vehicle.type else "",
+            "color": vehicle.color.value if vehicle.color else "",
+            "image": dyn.by_keyword(_vehicle_keyword(vehicle)),
             "remarks": vehicle.remarks
         } for vehicle in vehicles]
     )

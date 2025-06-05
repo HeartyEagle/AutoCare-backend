@@ -1112,3 +1112,144 @@ def get_user_token_by_id(
         "user_id": user.user_id,
         "role": user.discriminator
     }
+
+
+@router.get("/logs", response_model=Dict)
+def get_audit_logs(
+    table_name: Optional[str] = Query(
+        None, description="Filter by table name"),
+    operation: Optional[str] = Query(
+        None, description="Filter by operation type, e.g. INSERT/UPDATE/DELETE"),
+    limit: int = Query(100, ge=1, le=1000,
+                       description="Maximum logs to return"),
+    current_user: User = Depends(get_current_user),
+    audit_log_service: AuditLogService = Depends(get_audit_log_service)
+):
+    """
+    Admin API: view (optionally filter) audit logs. Newest first.
+    """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admin can view audit logs")
+
+    logs = audit_log_service.get_audit_logs(
+        table_name=table_name,
+        operation=operation,
+        limit=limit
+    )
+    return {
+        "status": "success",
+        "logs": [
+            {
+                "audit_log_id": log.audit_log_id,
+                "table_name": log.table_name,
+                "record_id": log.record_id,
+                "operation": str(log.operation),
+                "old_data": log.old_data,
+                "new_data": log.new_data,
+                "operated_at": str(log.operated_at)
+            }
+            for log in logs
+        ]
+    }
+
+
+@router.delete("/repair-order/{order_id}", response_model=Dict)
+def admin_delete_repair_order(
+    order_id: int,
+    current_user: User = Depends(get_current_user),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service)
+):
+    """
+    Admin deletes a repair order (级联/关联表数据由DB或业务自动处理).
+    """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admin can delete repair orders.")
+
+    deleted_order = repair_order_service.delete_repair_order(order_id)
+    if not deleted_order:
+        raise HTTPException(status_code=404, detail="Repair order not found")
+
+    return {
+        "status": "success",
+        "message": f"Repair order {order_id} deleted successfully",
+        "order": {
+            "order_id": deleted_order.order_id,
+            "vehicle_id": deleted_order.vehicle_id,
+            "customer_id": deleted_order.customer_id,
+            "status": deleted_order.status.value if deleted_order.status else None,
+            "order_time": str(deleted_order.order_time)
+        }
+    }
+
+
+@router.delete("/delete-user/{user_id}", response_model=Dict)
+def admin_delete_user(
+    user_id: int,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    管理员删除任意用户（包括admin, staff, customer），级联清理子表。
+    """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only admin can delete users"
+        )
+
+    user = user_service.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+
+    success = user_service.delete_user(user_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to delete user, please check if the user exists or has related data"
+        )
+
+    return {
+        "status": "success",
+        "message": f"{user.discriminator.capitalize()}(ID: {user.user_id}) deleted successfully",
+        "user_id": user.user_id,
+        "discriminator": user.discriminator,
+        "name": user.name,
+        "username": user.username
+    }
+
+
+@router.post("/rollback/{table_name}/{record_id}", response_model=Dict)
+def admin_rollback_last_change(
+    table_name: str,
+    record_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Database = Depends(get_db),
+    audit_log_service=Depends(get_audit_log_service)
+):
+    """
+    Admin: Roll back the last change to a record via audit log.
+    - Only admin can perform this action.
+    - Supports row-level inverse for INSERT/UPDATE/DELETE.
+    """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admin can rollback records")
+
+    try:
+        msg = audit_log_service.rollback_last_operation(
+            db, table_name, record_id)
+        return {
+            "status": "success",
+            "message": msg,
+            "table_name": table_name,
+            "record_id": record_id
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Rollback failed: {str(e)}")

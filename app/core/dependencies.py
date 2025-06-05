@@ -11,6 +11,7 @@ from ..crud.repair_log import RepairLogService
 from ..crud.feedback import FeedbackService
 from ..crud.repair_assignment import RepairAssignmentService
 from ..crud.material import MaterialService
+from ..crud.audit import AuditLogService
 from ..core.security import SECRET_KEY, ALGORITHM
 from ..schemas.auth import TokenPayload
 from ..models.user import User
@@ -87,6 +88,17 @@ def get_repair_assignment_service(db: Database = Depends(get_db)):
 
 def get_material_service(db: Database = Depends(get_db)):
     return MaterialService(db)
+
+
+def get_audit_log_service(db: Database = Depends(get_db)):
+    """
+    Dependency to get the AuditLogService instance.
+    Args:
+        db (Database): Database instance.
+    Returns:
+        AuditLogService: Instance of AuditLogService for audit log-related operations.
+    """
+    return AuditLogService(db)
 
 
 def get_current_user(token: str = Depends(oauth2_scheme), user_service: UserService = Depends(get_user_service)):
