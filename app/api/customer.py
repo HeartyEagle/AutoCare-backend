@@ -154,7 +154,9 @@ def update_customer_profile(
         name=info.name if info.name is not None else user.name,
         email=info.email if info.email is not None else user.email,
         address=info.address if info.address is not None else user.address,
-        phone=info.phone if info.phone is not None else user.phone
+        phone=info.phone if info.phone is not None else user.phone,
+        username=info.username if info.username is not None else user.username,
+        password=info.password if info.password is not None else None
     )
     if not updated:
         raise HTTPException(

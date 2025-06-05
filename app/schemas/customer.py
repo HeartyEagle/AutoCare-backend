@@ -159,7 +159,9 @@ class CustomerFeedbacksResponse(BaseModel):
 
 
 class CustomerProfileUpdate(BaseModel):
-    name: Optional[str] = Field(None, description="name")
-    email: Optional[str] = Field(None, description="email")
-    address: Optional[str] = Field(None, description="address")
-    phone: Optional[str] = Field(None, description="phone")
+    name: Optional[str]
+    email: Optional[str]
+    address: Optional[str]
+    phone: Optional[str]
+    username: Optional[str]
+    password: Optional[str]

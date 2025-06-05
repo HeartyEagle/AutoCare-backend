@@ -166,19 +166,52 @@ class UserService:
         )
         return staff
 
-    def update_user_info(self, user_id: int, name: str, email: str, address: str, phone: str) -> Optional[User]:
+    def update_user_info(
+        self,
+        user_id: int,
+        name: Optional[str] = None,
+        email: Optional[str] = None,
+        address: Optional[str] = None,
+        phone: Optional[str] = None,
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> Optional[User]:
+        """
+        Update any fields of user (name, email, address, phone, username, password...)
+        Only non-None fields will be updated.
+        """
         user = self.get_user_by_id(user_id)
         if not user:
             return None
         old = user.asdict()
-        user.name, user.email, user.address, user.phone = name, email, address, phone
+        data = {}
+        # Only update if not None
+        if name is not None:
+            user.name = name
+            data["name"] = name
+        if email is not None:
+            user.email = email
+            data["email"] = email
+        if address is not None:
+            user.address = address
+            data["address"] = address
+        if phone is not None:
+            user.phone = phone
+            data["phone"] = phone
+        if username is not None:
+            user.username = username
+            data["username"] = username
+        if password is not None:
+            password = get_password_hash(password)
+            user.password = password
+            data["password"] = password
 
-        self.db.update_data(table_name="user", data={
-            "name": user.name,
-            "email": user.email,
-            "address": user.address,
-            "phone": user.phone
-        }, where=f"user_id = {user_id}")
+        if not data:
+            # 没有任何字段需要更新
+            return user
+
+        self.db.update_data(table_name="user", data=data,
+                            where=f"user_id = {user_id}")
 
         self.audit_log_service.log_audit_event(
             table_name="user",
@@ -187,7 +220,7 @@ class UserService:
             old_data=old,
             new_data=user.asdict()
         )
-        return user
+        return self.get_user_by_id(user_id)  # 刷新后的最新对象
 
     def delete_user(self, user_id: int) -> bool:
         """
