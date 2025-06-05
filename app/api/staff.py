@@ -440,10 +440,12 @@ def get_assignments_for_staff(
     staff_id: int,
     current_user: User = Depends(get_current_user),
     repair_assignment_service: RepairAssignmentService = Depends(
-        get_repair_assignment_service)
+        get_repair_assignment_service),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service)
 ):
     """
-    Get all repair assignments associated with a specific staff member.
+    Get all repair assignments associated with a specific staff member, including associated order's status.
     Staff members can only access their own assignments, while admins can access any staff member's assignments.
     """
     if current_user.discriminator not in ["staff", "admin"] or \
@@ -452,7 +454,6 @@ def get_assignments_for_staff(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Unauthorized to view this staff member's assignments"
         )
-
     assignments = repair_assignment_service.get_assignments_by_staff_id(
         staff_id)
     if not assignments:
@@ -462,10 +463,13 @@ def get_assignments_for_staff(
             "staff_id": staff_id,
             "assignments": []
         }
-
-    # You can sort by status or time, if desired:
+    # Batch load orderstatuses for assignment.order_id
+    order_id_set = {a.order_id for a in assignments}
+    order_status_map = {}
+    for order_id in order_id_set:
+        order = repair_order_service.get_repair_order_by_id(order_id)
+        order_status_map[order_id] = order.status.value if order and order.status else None
     assignments_sorted = sorted(assignments, key=lambda a: a.status)
-
     return {
         "status": "success",
         "message": "Assignments retrieved successfully.",
@@ -475,8 +479,10 @@ def get_assignments_for_staff(
                 "assignment_id": a.assignment_id,
                 "order_id": a.order_id,
                 "status": a.status,
-                "time_worked": a.time_worked
-            } for a in assignments_sorted
+                "time_worked": a.time_worked,
+                "order_status": order_status_map.get(a.order_id)
+            }
+            for a in assignments_sorted
         ]
     }
 
