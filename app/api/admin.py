@@ -1141,7 +1141,7 @@ def get_audit_logs(
         "status": "success",
         "logs": [
             {
-                "audit_log_id": log.audit_log_id,
+                "log_id": log.log_id,
                 "table_name": log.table_name,
                 "record_id": log.record_id,
                 "operation": str(log.operation),
@@ -1224,30 +1224,45 @@ def admin_delete_user(
     }
 
 
-@router.post("/rollback/{table_name}/{record_id}", response_model=Dict)
-def admin_rollback_last_change(
-    table_name: str,
-    record_id: int,
+@router.post("/rollback/last", response_model=Dict)
+def rollback_last_audit_operation(
     current_user: User = Depends(get_current_user),
     db: Database = Depends(get_db),
     audit_log_service=Depends(get_audit_log_service)
 ):
     """
-    Admin: Roll back the last change to a record via audit log.
-    - Only admin can perform this action.
-    - Supports row-level inverse for INSERT/UPDATE/DELETE.
+    Admin API: Roll back the most recent audit log operation (no params needed).
     """
+    if current_user.discriminator != "admin":
+        raise HTTPException(
+            status_code=403, detail="Only admin can rollback the last operation.")
+    try:
+        msg = audit_log_service.rollback_most_recent(db)
+        return {
+            "status": "success",
+            "message": msg
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Rollback failed: {str(e)}")
+
+
+@router.post("/rollback/{record_id}", response_model=Dict)
+def admin_rollback_last_change(
+    record_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Database = Depends(get_db),
+    audit_log_service=Depends(get_audit_log_service)
+):
     if current_user.discriminator != "admin":
         raise HTTPException(
             status_code=403, detail="Only admin can rollback records")
 
     try:
-        msg = audit_log_service.rollback_last_operation(
-            db, table_name, record_id)
+        msg = audit_log_service.rollback_last_operation(db, record_id)
         return {
             "status": "success",
             "message": msg,
-            "table_name": table_name,
             "record_id": record_id
         }
     except Exception as e:

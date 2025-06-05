@@ -7,7 +7,7 @@ from ..schemas.staff import *
 from ..models import User
 from ..models.enums import *
 from ..core.repair_order import assign_order, accept_order
-from typing import Dict
+from typing import Dict, DefaultDict
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 
@@ -912,3 +912,91 @@ def get_staff_income(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve repair history: {str(e)}"
         )
+
+
+@router.get("/{staff_id}/salary-by-month", response_model=Dict)
+def get_staff_salary_by_month(
+    staff_id: int,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service),
+    repair_order_service: RepairOrderService = Depends(
+        get_repair_order_service),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service),
+    only_completed: bool = True,
+):
+    """
+    返回某维修工的每月薪酬情况（小时总数与收入），升序排列
+    Only staff 本人或admin可看。
+    """
+    # 权限校验
+    if current_user.discriminator != "admin" and (current_user.discriminator != "staff" or current_user.user_id != staff_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Unauthorized: Only the staff member or admin can access this data"
+        )
+    staff = user_service.get_user_by_id(staff_id)
+    if not staff or staff.discriminator != "staff":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Staff not found"
+        )
+
+    # Fetch all repair assignments for staff
+    assignments = repair_assignment_service.get_assignments_by_staff_id(
+        staff_id)
+    if not assignments:
+        return {"status": "success", "message": "No assignments found", "staff_id": staff_id, "monthly_salary": []}
+
+    # 数组: assignment.assignment_id, assignment.order_id, assignment.time_worked
+    # 我们需要获得order_time和order_status
+    order_info_map = dict()  # {order_id: (order_time, status)}
+
+    order_ids = {a.order_id for a in assignments}
+    # 查所有相关repair_order
+    orders = {o.order_id: o for o in repair_order_service.get_all_repair_orders(
+    ) if o.order_id in order_ids}
+    # 按月聚合
+    monthly = DefaultDict(
+        lambda: {"total_income": 0.0, "total_hours": 0.0, "order_ids": []})
+
+    for assignment in assignments:
+        order = orders.get(assignment.order_id)
+        if not order or (only_completed and order.status != RepairStatus.COMPLETED):
+            continue
+        order_time = order.order_time
+        if not order_time:
+            continue
+        # 支持 order_time 为str或datetime
+        try:
+            if isinstance(order_time, str):
+                order_dt = datetime.fromisoformat(order_time)
+            else:
+                order_dt = order_time
+            month_str = f"{order_dt.year}-{order_dt.month:02d}"
+        except Exception:
+            continue
+
+        # 工资按单计：只要有time_worked, 就乘以staff.hourly_rate
+        time_worked = assignment.time_worked or 0.0
+        income = time_worked * staff.hourly_rate
+        monthly[month_str]["total_income"] += income
+        monthly[month_str]["total_hours"] += time_worked
+        if assignment.order_id not in monthly[month_str]["order_ids"]:
+            monthly[month_str]["order_ids"].append(assignment.order_id)
+    # 整理输出: 按month排序
+    result = [
+        {
+            "month": month,
+            "total_income": round(data["total_income"], 2),
+            "total_hours": round(data["total_hours"], 2),
+            "order_ids": data["order_ids"]
+        }
+        for month, data in sorted(monthly.items())
+    ]
+    return {
+        "status": "success",
+        "staff_id": staff_id,
+        "hourly_rate": staff.hourly_rate,
+        "monthly_salary": result
+    }

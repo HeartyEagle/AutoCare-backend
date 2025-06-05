@@ -42,7 +42,7 @@ class AuditLogService:
         audit_log = AuditLog(
             table_name=table_name,
             record_id=record_id,
-            operation=operation,
+            operation=operation.value,
             old_data=json.dumps(
                 old_data_serialized) if old_data_serialized else None,
             new_data=json.dumps(
@@ -73,7 +73,7 @@ class AuditLogService:
         logs = self.db.select_data(
             table_name="audit_log",
             columns=[
-                "audit_log_id", "table_name", "record_id", "operation",
+                "log_id", "table_name", "record_id", "operation",
                 "old_data", "new_data", "operated_at"
             ],
             where=where_stmt,
@@ -82,7 +82,7 @@ class AuditLogService:
         )
         return [
             AuditLog(
-                audit_log_id=row[0],
+                log_id=row[0],
                 table_name=row[1],
                 record_id=row[2],
                 operation=row[3],
@@ -93,43 +93,44 @@ class AuditLogService:
             for row in logs
         ] if logs else []
 
-    def rollback_last_operation(
-        self,
-        db: Database,
-        table_name: str,
-        record_id: int
-    ) -> Optional[str]:
+    def rollback_most_recent(self, db) -> str:
         """
-        Rollback the last audit log operation for the given table/record_id.
-        Returns a human message on success, raises on failure.
+        Rollback the most recent operation (the one with max(operated_at) or max(audit_log_id)).
+        Returns a message if rollback succeeded, raises otherwise.
         """
-        # Fetch the last audit log entry for this record
-        logs = self.get_audit_logs(table_name=table_name, limit=100)
-        for log in logs:
-            if log.record_id == record_id:
-                op = log.operation
-                old_data = json.loads(log.old_data) if log.old_data else None
-                new_data = json.loads(log.new_data) if log.new_data else None
-                if op == "UPDATE" or (hasattr(op, "value") and op.value == "UPDATE"):
-                    # Restore old_data via UPDATE
-                    if not old_data:
-                        raise Exception(
-                            "No old_data for rollback (update case).")
-                    db.update_data(table_name=table_name, data=old_data,
-                                   where=f"{table_name}_id = {record_id}")
-                    return "Rolled back last UPDATE to previous state."
-                elif op == "DELETE" or (hasattr(op, "value") and op.value == "DELETE"):
-                    # Restore old_data via INSERT
-                    if not old_data:
-                        raise Exception(
-                            "No old_data for rollback (delete case).")
-                    db.insert_data(table_name=table_name, data=old_data)
-                    return "Rolled back last DELETE: record re-inserted."
-                elif op == "INSERT" or (hasattr(op, "value") and op.value == "INSERT"):
-                    # Remove the just-inserted record
-                    db.delete_data(table_name=table_name,
-                                   where=f"{table_name}_id = {record_id}")
-                    return "Rolled back last INSERT: record deleted."
-                else:
-                    raise Exception(f"Unknown operation type: {op}")
-        raise Exception("No audit log found for this record to rollback.")
+        logs = self.db.select_data(
+            table_name="audit_log",
+            columns=["log_id", "table_name", "record_id",
+                     "operation", "old_data", "new_data", "operated_at"],
+            order_by="operated_at DESC",
+            limit=1
+        )
+        if not logs:
+            raise Exception("No audit logs found.")
+
+        r = logs[0]
+        table_name = r[1]
+        record_id = r[2]
+        op = r[3]
+        import json
+        old_data = json.loads(r[4]) if r[4] else None
+        new_data = json.loads(r[5]) if r[5] else None
+        pk_field = f"{table_name}_id"
+
+        if op == "UPDATE" or (hasattr(op, "value") and op.value == "UPDATE"):
+            if not old_data:
+                raise Exception("No old_data for rollback (update case).")
+            db.update_data(table_name=table_name, data=old_data,
+                           where=f"{pk_field} = {record_id}")
+            return f"Rolled back last UPDATE for {table_name}({record_id})."
+        elif op == "DELETE" or (hasattr(op, "value") and op.value == "DELETE"):
+            if not old_data:
+                raise Exception("No old_data for rollback (delete case).")
+            db.insert_data(table_name=table_name, data=old_data)
+            return f"Rolled back last DELETE: reinserted {table_name}({record_id})."
+        elif op == "INSERT" or (hasattr(op, "value") and op.value == "INSERT"):
+            db.delete_data(table_name=table_name,
+                           where=f"{pk_field} = {record_id}")
+            return f"Rolled back last INSERT: deleted {table_name}({record_id})."
+        else:
+            raise Exception(f"Unknown operation type: {op}")
