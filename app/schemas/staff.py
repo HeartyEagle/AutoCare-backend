@@ -71,3 +71,8 @@ class StaffProfileUpdate(BaseModel):
     email: Optional[str] = Field(None, description="邮箱")
     address: Optional[str] = Field(None, description="地址")
     phone: Optional[str] = Field(None, description="电话")
+
+
+class UpdateAssignmentTimeRequest(BaseModel):
+    time_worked: float = Field(..., ge=0,
+                               description="The number of hours worked for this assignment")

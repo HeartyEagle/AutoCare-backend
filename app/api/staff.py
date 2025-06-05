@@ -839,33 +839,20 @@ def get_staff_income(
 ):
     """
     Query historical repair records and total labor fee income for a staff member.
-    Total hours worked is the sum of time_worked from all repair assignments.
-    Only accessible to the staff member themselves.
-
-    Args:
-        staff_id (int): ID of the staff member querying their history.
-        current_user (User): The currently authenticated user.
-        repair_assignment_service (RepairAssignmentService): Service for handling repair assignment operations.
-
-    Returns:
-        Dict: Response containing the staff's repair history, total hours worked, and total income.
-
-    Raises:
-        HTTPException: If the user is unauthorized or an error occurs during the operation.
     """
-    # Validate user is staff and matches the staff_id
-    print(current_user.discriminator)
-    print(current_user.user_id)
-    print(staff_id)
+    # 权限校验
     if (current_user.discriminator != "admin" and current_user.discriminator != "staff") or current_user.user_id != staff_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Unauthorized: Only the staff member can access their own repair history"
         )
-
     try:
-        # Fetch all repair assignments for the staff member
         staff = user_service.get_user_by_id(staff_id)
+        if not staff or staff.discriminator != "staff":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Staff member not found"
+            )
         assignments = repair_assignment_service.get_assignments_by_staff_id(
             staff_id)
         if not assignments:
@@ -877,28 +864,21 @@ def get_staff_income(
                 "total_income": 0.0,
                 "assignments": []
             }
-
-        # Calculate total hours worked by summing time_worked from all assignments
-        total_hours_worked = sum(
-            assignment.time_worked for assignment in assignments if assignment.time_worked is not None
-        )
-
-        # Calculate total income from labor fees
-        # Assuming assignment_fee is calculated based on time_worked and hourly rate
-        total_income = staff.hourly_rate * total_hours_worked
-
-        # Format the assignment details for the response
+        # Use staff's hourly_rate for all assignments
+        hourly_rate = getattr(staff, "hourly_rate", 0.0)
+        total_hours_worked = sum(a.time_worked or 0.0 for a in assignments)
+        total_income = sum((a.time_worked or 0.0) *
+                           hourly_rate for a in assignments)
         assignment_details = [
             {
-                "assignment_id": assignment.assignment_id,
-                "order_id": assignment.order_id,
-                "status": assignment.status,
-                "time_worked": assignment.time_worked if assignment.time_worked is not None else 0.0,
-                "assignment_fee": assignment.assignment_fee if assignment.assignment_fee is not None else 0.0
+                "assignment_id": a.assignment_id,
+                "order_id": a.order_id,
+                "status": a.status,
+                "time_worked": a.time_worked or 0.0,
+                "assignment_fee": (a.time_worked or 0.0) * hourly_rate
             }
-            for assignment in assignments
+            for a in assignments
         ]
-
         return {
             "status": "success",
             "message": "Repair history retrieved successfully",
@@ -999,4 +979,45 @@ def get_staff_salary_by_month(
         "staff_id": staff_id,
         "hourly_rate": staff.hourly_rate,
         "monthly_salary": result
+    }
+
+
+@router.post("/assignments/{assignment_id}/update-time", response_model=Dict)
+def update_repair_assignment_time(
+    assignment_id: int,
+    req: UpdateAssignmentTimeRequest,
+    current_user: User = Depends(get_current_user),
+    repair_assignment_service: RepairAssignmentService = Depends(
+        get_repair_assignment_service)
+):
+    """
+    Staff or admin updates own repair assignment time (工时).
+    Only the assignment's staff or admin allowed.
+    """
+    assignment = repair_assignment_service.get_repair_assignment_by_id(
+        assignment_id)
+    if not assignment:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+
+    # 权限检查（只能本人或admin改）
+    if current_user.discriminator != "admin" and current_user.user_id != assignment.staff_id:
+        raise HTTPException(
+            status_code=403, detail="Only the assignment's staff or admin can update time.")
+
+    # 更新
+    updated = repair_assignment_service.update_repair_assignment_time(
+        assignment_id=assignment_id,
+        time_worked=req.time_worked
+    )
+    if not updated:
+        raise HTTPException(
+            status_code=500, detail="Failed to update assignment time.")
+
+    return {
+        "status": "success",
+        "message": "Assignment time_worked updated successfully.",
+        "assignment_id": updated.assignment_id,
+        "order_id": updated.order_id,
+        "staff_id": updated.staff_id,
+        "time_worked": updated.time_worked
     }
