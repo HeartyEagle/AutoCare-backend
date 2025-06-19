@@ -195,7 +195,7 @@ class RepairOrderService:
             where=f"order_id = {order_id}"
         )
 
-        if status == RepairStatus.FINISHED:
+        if status == RepairStatus.COMPLETED:
             order.finish_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.db.update_data(
                 table_name="repair_order",

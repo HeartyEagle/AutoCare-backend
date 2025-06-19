@@ -71,6 +71,8 @@ class StaffProfileUpdate(BaseModel):
     email: Optional[str] = Field(None, description="邮箱")
     address: Optional[str] = Field(None, description="地址")
     phone: Optional[str] = Field(None, description="电话")
+    username: Optional[str] = Field(None, description="用户名")
+    password: Optional[str] = Field(None, description="密码")
 
 
 class UpdateAssignmentTimeRequest(BaseModel):
