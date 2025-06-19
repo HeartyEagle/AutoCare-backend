@@ -45,9 +45,11 @@ def assign_order(order_id: int,
         required_staff_type=required_staff_type,
         exclude_staff_id=exclude_staff_id
     )
-    if not eligible_staff:
+    if not eligible_staff and not exclude_staff_id:
         raise ValueError(f"No eligible staff found for type {required_staff_type}" +
                          (f" excluding staff ID {exclude_staff_id}" if exclude_staff_id else ""))
+    if not eligible_staff and exclude_staff_id:
+        raise ValueError("No other eligible staff found for reassignment")
 
     # Select a random staff member from the eligible list
     selected_staff = random.choice(eligible_staff)
@@ -107,14 +109,6 @@ def accept_order(assignment_id: int,
 
     # Update the assignment status based on the response
     new_status = "accepted" if accept else "rejected"
-    updated_assignment = repair_assignment_service.update_assignment_status(
-        assignment_id=assignment_id,
-        staff_id=staff_id,
-        new_status=new_status
-    )
-    if not updated_assignment:
-        raise RuntimeError(
-            f"Failed to update assignment status to {new_status}")
 
     # If accepted, update the repair order status to IN_PROGRESS
     if accept:
@@ -143,6 +137,15 @@ def accept_order(assignment_id: int,
                     "Reassignment failed: No new assignment created")
         except ValueError as e:
             raise RuntimeError(f"Reassignment failed: {str(e)}")
+
+    updated_assignment = repair_assignment_service.update_assignment_status(
+        assignment_id=assignment_id,
+        staff_id=staff_id,
+        new_status=new_status
+    )
+    if not updated_assignment:
+        raise RuntimeError(
+            f"Failed to update assignment status to {new_status}")
 
     return updated_assignment
 

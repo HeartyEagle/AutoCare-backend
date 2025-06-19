@@ -131,7 +131,7 @@ class RepairOrderService:
                 "ro.finish_time", "ro.remarks", "ra.time_worked"
             ],
             joins=["INNER JOIN repair_assignment ra ON ro.order_id = ra.order_id"],
-            where=f"ra.staff_id = {staff_id}"
+            where=f"ra.staff_id = {staff_id} AND ra.status = 'accepted'"
         )
         return [
             {
@@ -194,6 +194,15 @@ class RepairOrderService:
             data={"status": status.value},
             where=f"order_id = {order_id}"
         )
+
+        if status == RepairStatus.FINISHED:
+            order.finish_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.db.update_data(
+                table_name="repair_order",
+                data={"finish_time": order.finish_time},
+                where=f"order_id = {order_id}"
+            )
+
         self.audit_log_service.log_audit_event(
             table_name="repair_order",
             record_id=order_id,
