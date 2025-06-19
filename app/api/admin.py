@@ -26,6 +26,48 @@ from datetime import timedelta
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+@router.get("/{admin_id}/profile", response_model=AdminProfile)
+def get_admin_profile(
+    admin_id: int,
+    current_user: User = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """
+    Get the profile of a specific admin.
+    Args:
+        admin_id (int): ID of the admin whose profile is to be retrieved.
+        current_user (User): The currently authenticated user.
+        user_service (UserService): Service for user-related operations.
+    Returns:
+        AdminProfile: A dictionary containing the admin's profile information.
+    """
+    # Check if the user is an admin
+    if current_user.discriminator != "admin":
+        return AdminProfile(
+            status="failure",
+            message="Unauthorized: Only admin users can access this endpoint"
+        )
+
+    # Fetch admin profile using the user service
+    admin_profile = user_service.get_user_by_id(admin_id)
+    if not admin_profile or admin_profile.discriminator != "admin":
+        return AdminProfile(
+            status="failure",
+            message="Admin not found"
+        )
+
+    return AdminProfile(
+        status="success",
+        message="Admin profile retrieved successfully",
+        admin_id=admin_profile.user_id,
+        name=admin_profile.name,
+        username=admin_profile.username,
+        email=admin_profile.email,
+        phone=admin_profile.phone,
+        address=admin_profile.address
+    )
+
+
 @router.get("/users", response_model=AdminUsersResponse)
 def get_all_users(
     current_user: User = Depends(get_current_user),

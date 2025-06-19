@@ -5,6 +5,18 @@ from datetime import datetime
 from ..models.user import StaffJobType
 
 
+class AdminProfile(BaseModel):
+    user_id: int
+    name: str
+    username: str
+    discriminator: str  # customer, staff, admin
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    jobtype: Optional[StaffJobType] = None
+    hourly_rate: Optional[float] = None
+
+
 class AdminUserResponse(BaseModel):
     user_id: int
     name: str
